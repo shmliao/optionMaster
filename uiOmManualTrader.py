@@ -1079,6 +1079,7 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.verticalHeader().setVisible(False)
         self.setEditTriggers(self.NoEditTriggers)
 
+
         # for i in range(self.columnCount()):
         #     self.horizontalHeader().setResizeMode(i, QtWidgets.QHeaderView.Stretch)
         # self.horizontalHeader().setResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
