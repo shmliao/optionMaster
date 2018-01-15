@@ -386,9 +386,9 @@ class FloatTradingWidget(QtWidgets.QWidget):
         # 卖开逻辑问题，加一个卖开选项来开关卖开还是卖平，如果选择打开卖开选项，则不管是否有多头仓位都选择卖开，如果关掉卖开选项，则按正常逻辑卖平卖开
         self.shortOpenRadio = QtWidgets.QRadioButton(u"卖开")
         self.shortCloseRadio = QtWidgets.QRadioButton(u"卖平")
-        self.shortCloseRadio.setChecked(True)
-        self.shortDirectionHorizontalLayoutWidget.addWidget(self.shortCloseRadio)
+        self.shortOpenRadio.setChecked(True)
         self.shortDirectionHorizontalLayoutWidget.addWidget(self.shortOpenRadio)
+        self.shortDirectionHorizontalLayoutWidget.addWidget(self.shortCloseRadio)
 
         labelDirection = QtWidgets.QLabel(u'方向')
         labelPrice = QtWidgets.QLabel(u'价格')
@@ -1032,6 +1032,8 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         u'Gamma',
         u'Vega',
         u'Theta',
+        u'凸度',
+        u'偏度'
 
     ]
 
@@ -1063,6 +1065,14 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.cellGamma = {}
         self.cellVega = {}
         self.cellTheta = {}
+        self.cellConvexity={}
+        self.cellSkew = {}
+
+
+        self.totalCellDelta=None
+        self.totalCellGamma=None
+        self.totalCellVega=None
+        self.totalCellTheta=None
 
         self.initUi()
         self.eventEngine.register(EVENT_TIMER, self.timingCalculate)
@@ -1085,11 +1095,15 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         # self.horizontalHeader().setResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
         # self.horizontalHeader().setResizeMode(self.columnCount() - 1, QtWidgets.QHeaderView.ResizeToContents)
         # 初始化标的单元格
+        self.totalCellDelta = OmCell(str(self.portfolio.posDelta), None, COLOR_POS)
+        self.totalCellGamma =OmCell(str(self.portfolio.posGamma), None, COLOR_POS)
+        self.totalCellVega = OmCell(str(self.portfolio.posVega), None, COLOR_POS)
+        self.totalCellTheta = OmCell(str(self.portfolio.posTheta), None, COLOR_POS)
         self.setItem(4, 0, OmCell(u"汇总", None, COLOR_POS))
-        self.setItem(4, 12, OmCell(str(self.portfolio.posDelta), None, COLOR_POS))
-        self.setItem(4, 13, OmCell(str(self.portfolio.posGamma), None, COLOR_POS))
-        self.setItem(4, 14, OmCell(str(self.portfolio.posVega), None, COLOR_POS))
-        self.setItem(4, 15, OmCell(str(self.portfolio.posTheta), None, COLOR_POS))
+        self.setItem(4, 12,  self.totalCellDelta)
+        self.setItem(4, 13,  self.totalCellGamma)
+        self.setItem(4, 14, self.totalCellVega)
+        self.setItem(4, 15,self.totalCellTheta)
 
         for row,chain in enumerate(self.portfolio.chainDict.values()):
             cellDueDate = OmCell(str(chain.optionDict[chain.atTheMoneySymbol].expiryDate), None, COLOR_POS)
@@ -1113,7 +1127,8 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             cellGamma = OmCell(str(chain.posGamma), None, COLOR_POS)
             cellVega = OmCell(str(chain.posVega), None, COLOR_POS)
             cellTheta = OmCell(str(chain.posTheta), None, COLOR_POS)
-
+            cellConvexity=OmCell(str(chain.convexity), None, COLOR_POS)
+            cellSkew=OmCell(str(chain.skew), None, COLOR_POS)
             self.cellDelta[row]=cellDelta
             self.cellGamma[row]=cellGamma
             self.cellVega[row]=cellVega
@@ -1136,6 +1151,9 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             self.cellPutBidVol[row] = cellPutBidVol
             self.cellPutPrice[row] = cellPutPrice
 
+            self.cellConvexity[row] = cellConvexity
+            self.cellSkew[row] = cellSkew
+
             self.setItem(row , 0, cellDueDate)
             self.setItem(row , 1, cellDueTime)
             self.setItem(row, 2, cellCallPrice)
@@ -1153,6 +1171,8 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             self.setItem(row, 13, cellGamma)
             self.setItem(row, 14, cellVega)
             self.setItem(row, 15, cellTheta)
+            self.setItem(row, 16, cellConvexity)
+            self.setItem(row, 17, cellSkew)
 
 
 
@@ -1183,3 +1203,10 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             self.cellVega[row].setText(str(chain.posVega))
             self.cellTheta[row].setText(str(chain.posTheta))
 
+            self.cellConvexity[row].setText(str(chain.convexity))
+            self.cellSkew[row].setText(str(chain.skew))
+
+        self.totalCellDelta.setText(str(self.portfolio.posDelta))
+        self.totalCellGamma.setText(str(self.portfolio.posGamma))
+        self.totalCellVega.setText(str(self.portfolio.posVega))
+        self.totalCellTheta.setText(str(self.portfolio.posTheta))

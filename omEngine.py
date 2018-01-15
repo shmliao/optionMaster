@@ -146,6 +146,7 @@ class OmEngine(object):
             for symbol, contract in self.optionContractDict.items():
                 if contract.underlyingSymbol == d['chainSymbol']:
                     detail = self.mainEngine.getPositionDetail(contract.vtSymbol)
+                    print detail.output()
                     option = OmOption(contract, detail, underlying, model, r)
                     if contract.optionType is OPTION_CALL:
                         callDict[option.k] = option

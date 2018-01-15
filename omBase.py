@@ -224,11 +224,10 @@ class OmOption(OmInstrument):
         if not underlyingPrice:
             return        
 
-        # print [self.bidPrice1, underlyingPrice, self.k,self.r, self.t, self.cp]
         self.askImpv = self.calculateImpv(self.askPrice1, underlyingPrice, self.k,
                                           self.r, self.t, self.cp)
         self.bidImpv = self.calculateImpv(self.bidPrice1, underlyingPrice, self.k,
-                                          self.r, self.t, self.cp)        
+                                          self.r, self.t, self.cp)
         self.midImpv = (self.askImpv + self.bidImpv) / 2
     
     #----------------------------------------------------------------------
@@ -236,7 +235,6 @@ class OmOption(OmInstrument):
         """计算理论希腊值"""
         underlyingPrice = self.underlying.midPrice
         if not underlyingPrice:
-            print "计算了不"+str(underlyingPrice)
             return
         
         self.theoPrice, delta, gamma, theta, vega = self.calculateGreeks(underlyingPrice, 
@@ -313,6 +311,12 @@ class OmChain(object):
 
         # 平值期权的CallSymbol
         self.atTheMoneySymbol=None
+
+        #期权凸度计算
+        self.convexity=100
+
+        # 期权偏度计算
+        self.skew = 100
 
 
 
@@ -391,24 +395,37 @@ class OmChain(object):
         """计算利率，选择平值期权的前后两档，五档行情的利率平均值作为最终的利率"""
         s=self.underlying.midPrice
         k=[abs(callOption.k-s) for callOption in self.callDict.values()]
+        k=[abs(callOption.k-s) for callOption in self.callDict.values()]
         minIndex= k.index(min(k))
-        # print "实值期权位置"+str(minIndex)
         rateArray=[]
         for index in range(-2+minIndex,3+minIndex,1):
             try:
                 callPrice = self.callDict.values()[index].midPrice
                 putPrice=self.putDict.values()[index].midPrice
-                # print self.putDict.values()[index].k
-                # print self.callDict.values()[index].k
-                # print "call"+str(callPrice)
-                # print "put"+str(putPrice)
                 f = callPrice - putPrice+ self.putDict.values()[index].k
                 r = log(f / self.underlying.midPrice) / self.putDict.values()[index].t
                 rateArray.append(r)
             except Exception:
-                print "处错误了"
+                rateArray.append(self.chainRate)
         self.chainRate=round(sum(rateArray)/len(rateArray),4)
         self.atTheMoneySymbol=self.callDict.values()[minIndex].symbol
+
+        try:
+            #计算凸度
+            self.convexity=(self.callDict.values()[index-1].midImpv+self.putDict.values()[index+1].midImpv)/(self.callDict.values()[index].midImpv+self.putDict.values()[index].midImpv)*100.0
+        except Exception:
+            print "出问题了"
+            self.convexity=100
+
+        try:
+            #计算偏度
+            delta = [abs(callOption.theoDelta - 0.25) for callOption in self.callDict.values()]
+            index1=delta.index(min(delta))
+            delta = [abs(callOption.theoDelta - 0.75) for callOption in self.callDict.values()]
+            index2 = delta.index(min(delta))
+            self.skew=100*self.callDict.values()[index1].midImpv/self.putDict.values()[index2].midImpv
+        except Exception:
+            self.skew=100
         return self.chainRate
     #----------------------------------------------------------------------
     def newTrade(self, trade):

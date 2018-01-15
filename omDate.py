@@ -14,7 +14,7 @@ from vnpy.trader.uiQt import QtCore, QtWidgets, QtGui
 
 
 # 常量定义
-ANNUAL_TRADINGDAYS = 260
+ANNUAL_TRADINGDAYS = 250
 
 CALENDAR_FILENAME = 'TradingCalendar.csv'
 PATH = os.path.abspath(os.path.dirname(__file__))
