@@ -119,11 +119,7 @@ class OmEngine(object):
             underlying = OmUnderlying(contract, detail)
             underlyingDict[underlyingSymbol] = underlying
 
-            # print contract.vtSymbol  510050.SSE
-            # print underlyingDict
-            # print underlying
-            # print underlyingSymbol   510050
-        
+
         # 创建期权链对象并初始化
         chainList = []
         for d in setting['chain']:
@@ -146,7 +142,6 @@ class OmEngine(object):
             for symbol, contract in self.optionContractDict.items():
                 if contract.underlyingSymbol == d['chainSymbol']:
                     detail = self.mainEngine.getPositionDetail(contract.vtSymbol)
-                    print detail.output()
                     option = OmOption(contract, detail, underlying, model, r)
                     if contract.optionType is OPTION_CALL:
                         callDict[option.k] = option

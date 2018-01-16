@@ -1033,7 +1033,9 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         u'Vega',
         u'Theta',
         u'凸度',
-        u'偏度'
+        u'偏度',
+        u'CallImpv',
+        u'PutImpv'
 
     ]
 
@@ -1067,7 +1069,8 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.cellTheta = {}
         self.cellConvexity={}
         self.cellSkew = {}
-
+        self.cellCallImpv={}
+        self.cellPutImpv={}
 
         self.totalCellDelta=None
         self.totalCellGamma=None
@@ -1129,6 +1132,9 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             cellTheta = OmCell(str(chain.posTheta), None, COLOR_POS)
             cellConvexity=OmCell(str(chain.convexity), None, COLOR_POS)
             cellSkew=OmCell(str(chain.skew), None, COLOR_POS)
+            cellCallImpv =OmCell(str(chain.callImpv), None, COLOR_POS)
+            cellPutImpv = OmCell(str(chain.putImpv), None, COLOR_POS)
+
             self.cellDelta[row]=cellDelta
             self.cellGamma[row]=cellGamma
             self.cellVega[row]=cellVega
@@ -1154,6 +1160,10 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             self.cellConvexity[row] = cellConvexity
             self.cellSkew[row] = cellSkew
 
+            self.cellCallImpv[row] = cellCallImpv
+
+            self.cellPutImpv[row] = cellPutImpv
+
             self.setItem(row , 0, cellDueDate)
             self.setItem(row , 1, cellDueTime)
             self.setItem(row, 2, cellCallPrice)
@@ -1173,6 +1183,9 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             self.setItem(row, 15, cellTheta)
             self.setItem(row, 16, cellConvexity)
             self.setItem(row, 17, cellSkew)
+
+            self.setItem(row, 18, cellCallImpv)
+            self.setItem(row, 19, cellPutImpv)
 
 
 
@@ -1205,6 +1218,9 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
 
             self.cellConvexity[row].setText(str(chain.convexity))
             self.cellSkew[row].setText(str(chain.skew))
+
+            self.cellCallImpv[row].setText(str(chain.callImpv))
+            self.cellPutImpv[row].setText(str(chain.putImpv))
 
         self.totalCellDelta.setText(str(self.portfolio.posDelta))
         self.totalCellGamma.setText(str(self.portfolio.posGamma))

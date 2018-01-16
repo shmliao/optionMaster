@@ -198,6 +198,7 @@ class OmOption(OmInstrument):
         self.calculatePrice = model.calculatePrice
         self.calculateGreeks = model.calculateGreeks
         self.calculateImpv = model.calculateImpv
+        self.calculateVega=model.calculateVega
     
         # 模型定价
         self.pricingImpv = EMPTY_FLOAT
@@ -212,8 +213,14 @@ class OmOption(OmInstrument):
         self.posDelta = EMPTY_FLOAT     # 持仓的希腊值（乘以了持仓）
         self.posGamma = EMPTY_FLOAT
         self.posTheta = EMPTY_FLOAT
-        self.posVega = EMPTY_FLOAT 
-        
+        self.posVega = EMPTY_FLOAT
+
+        self.theoPrice = EMPTY_FLOAT
+        self.delta = EMPTY_FLOAT
+        self.gamma = EMPTY_FLOAT
+        self.theta = EMPTY_FLOAT
+        self.vega = EMPTY_FLOAT
+
         # 期权链
         self.chain = None
     #----------------------------------------------------------------------
@@ -231,23 +238,48 @@ class OmOption(OmInstrument):
         self.midImpv = (self.askImpv + self.bidImpv) / 2
     
     #----------------------------------------------------------------------
+    def calculateTheoVega(self):
+        underlyingPrice = self.underlying.midPrice
+        if not underlyingPrice:
+            return
+
+        self.vega = self.calculateVega(underlyingPrice,self.k, self.r,self.t,self.midImpv,self.cp)
+
+    def calculateTheoGreeksAndPosGreeks(self,callorPutImpv):
+        underlyingPrice = self.underlying.midPrice
+        if not underlyingPrice:
+            return
+
+        self.theoPrice, self.delta, self.gamma, self.theta = self.calculateGreeks(underlyingPrice,
+                                                                                  self.k,
+                                                                                  self.r,
+                                                                                  self.t,
+                                                                                  callorPutImpv,
+                                                                                  self.cp)
+
+        self.theoDelta = round(self.delta * self.size,2)
+        self.theoGamma = round(self.gamma * self.size,2)
+        self.theoTheta = round(self.theta * self.size,2)
+        self.theoVega = round(self.vega * self.size,2)
+        self.calculatePosGreeks()
+
     def calculateTheoGreeks(self):
         """计算理论希腊值"""
         underlyingPrice = self.underlying.midPrice
         if not underlyingPrice:
             return
         
-        self.theoPrice, delta, gamma, theta, vega = self.calculateGreeks(underlyingPrice, 
+        self.theoPrice, self.delta, self.gamma, self.theta = self.calculateGreeks(underlyingPrice,
                                                                          self.k, 
                                                                          self.r, 
                                                                          self.t, 
                                                                          self.midImpv,
                                                                          self.cp)
 
-        self.theoDelta = delta * self.size
-        self.theoGamma = gamma * self.size
-        self.theoTheta = theta * self.size
-        self.theoVega = vega * self.size
+        self.theoDelta = self.delta * self.size
+        self.theoGamma = self.gamma * self.size
+        self.theoTheta = self.theta * self.size
+        self.theoVega = self.vega * self.size
 
 
         
@@ -256,10 +288,10 @@ class OmOption(OmInstrument):
         """计算持仓希腊值"""
         self.posValue = self.theoPrice * self.netPos * self.size
 
-        self.posDelta = self.theoDelta * self.netPos
-        self.posGamma = self.theoGamma * self.netPos
-        self.posTheta = self.theoTheta * self.netPos
-        self.posVega = self.theoVega * self.netPos
+        self.posDelta = round(self.theoDelta * self.netPos,2)
+        self.posGamma = round(self.theoGamma * self.netPos,2)
+        self.posTheta = round(self.theoTheta * self.netPos,2)
+        self.posVega = round(self.theoVega * self.netPos,2)
 
     #----------------------------------------------------------------------
     def newTick(self, tick):
@@ -318,6 +350,12 @@ class OmChain(object):
         # 期权偏度计算
         self.skew = 100
 
+        # put期权的综合波动率:vega权重作为系数，put期权波动率作为数值，累计叠加
+
+        self.putImpv=0
+
+        #call期权的综合波动率:vega权重作为系数，call期权波动率作为数值，累计叠加
+        self.callImpv=0
 
 
         # 根据call或者put合约的symbol快速找到相同执行价的put或者call的合约
@@ -380,18 +418,98 @@ class OmChain(object):
         option = self.optionDict[tick.symbol]
         # print '期权价格发生变化你应该在这里计算利率'
         option.newTick(tick)
-        rate = self.calculateChainRate()
-        for option in self.optionDict.values():
-            option.r = rate
+        # rate = self.calculateChainRate()
+        # for option in self.optionDict.values():
+        #     option.r = rate
     #----------------------------------------------------------------------
     def newUnderlyingTick(self):
         """期货行情更新"""
-        rate=self.calculateChainRate()
-        for option in self.optionDict.values():
-            option.r = rate
-        self.calculatePosGreeks()
+        # rate=self.calculateChainRate()
+        # for option in self.optionDict.values():
+        #     option.r = rate
+        # self.calculatePosGreeks()
+
+    def outOfTheMoneyImpv(self,atTheMoneyKPrice,callOption,putOption):
+        if callOption.k<atTheMoneyKPrice:
+            return self.relativeOption[callOption.symbol].midImpv
+        else:
+            return callOption.midImpv
+
+    def outOfTheMoneyVega(self, atTheMoneyKPrice, callOption):
+        if callOption.k < atTheMoneyKPrice:
+            if self.relativeOption[callOption.symbol].midPrice>0.0001:
+                return self.relativeOption[callOption.symbol].vega
+            else:
+                return 0
+        else:
+            if callOption.midPrice>0.0001:
+                return callOption.vega
+            else:
+                return 0
+
 
     def calculateChainRate(self):
+        """计算利率，选择平值期权的前后两档，五档行情的利率平均值作为最终的利率"""
+        """首先计算利率，然后用这个利率算每个月份的call和put的波动率和vega，利用vega算权重，取每个执行价的虚值期权波动率作为每个月份的隐含波动率，算出chain的综合波动率,再算其他的希腊值"""
+        s=self.underlying.midPrice
+        k=[abs(callOption.k-s) for callOption in self.callDict.values()]
+        k=[abs(callOption.k-s) for callOption in self.callDict.values()]
+        minIndex= k.index(min(k))
+        rateArray=[]
+        atTheMoneyKPrice=self.putDict.values()[minIndex].k
+        for index in range(-2+minIndex,3+minIndex,1):
+            try:
+                callPrice = self.callDict.values()[index].midPrice
+                putPrice=self.putDict.values()[index].midPrice
+                f = callPrice - putPrice+ self.putDict.values()[index].k
+                r = log(f / self.underlying.midPrice) / self.putDict.values()[index].t
+                rateArray.append(r)
+            except Exception:
+                rateArray.append(self.chainRate)
+        self.chainRate=round(sum(rateArray)/len(rateArray),4)
+        self.atTheMoneySymbol=self.callDict.values()[minIndex].symbol
+
+
+        # 计算每个合约的vega和隐含波动率
+        for option in self.optionDict.values():
+            option.r =self.chainRate
+            option.calculateOptionImpv()
+            option.calculateTheoVega()
+        try:
+            #计算凸度
+            self.convexity=round((self.callDict.values()[index-1].midImpv+self.putDict.values()[index+1].midImpv)/(self.callDict.values()[index].midImpv+self.putDict.values()[index].midImpv)*100.0,2)
+        except Exception:
+            self.convexity=100
+            
+        # 取每个执行价的虚值期权波动率作为每个合约的综合波动率,取每个执行价的虚值期权vega作为每个合约的综合vega
+        # comprehensiveImpv= [self.outOfTheMoneyImpv(atTheMoneyKPrice,callOption)  for callOption in self.callDict.values()]
+        comprehensiveVega=[self.outOfTheMoneyVega(atTheMoneyKPrice,callOption)  for callOption in self.callDict.values()]
+        totalVega=sum(comprehensiveVega)
+ 
+        weightVega=[item/totalVega for item in comprehensiveVega]
+
+        self.callImpv=sum([vega*impv for vega, impv in zip(weightVega,[callOption.midImpv for callOption in self.callDict.values()])])
+        self.putImpv=sum([vega*impv for vega, impv in zip(weightVega,[callOption.midImpv for callOption in self.putDict.values()])])
+
+        self.callImpv=round(self.callImpv,4)
+        self.putImpv = round(self.putImpv, 4)
+
+        [callOption.calculateTheoGreeksAndPosGreeks(self.callImpv) for callOption in self.callDict.values()]
+        [callOption.calculateTheoGreeksAndPosGreeks(self.putImpv) for putOption in self.putDict.values()]
+
+            # 计算偏度
+        try:
+            delta = [abs(callOption.delta - 0.25) for callOption in self.callDict.values()]
+            index1 = delta.index(min(delta))
+            delta = [abs(callOption.delta - 0.75) for callOption in self.callDict.values()]
+            index2 = delta.index(min(delta))
+            self.skew = round(100 * self.putDict.values()[index2].midImpv / self.callDict.values()[index1].midImpv, 2)
+        except Exception:
+            self.skew = 100
+
+
+
+    def calculateChainRate2(self):
         """计算利率，选择平值期权的前后两档，五档行情的利率平均值作为最终的利率"""
         s=self.underlying.midPrice
         k=[abs(callOption.k-s) for callOption in self.callDict.values()]
@@ -410,23 +528,28 @@ class OmChain(object):
         self.chainRate=round(sum(rateArray)/len(rateArray),4)
         self.atTheMoneySymbol=self.callDict.values()[minIndex].symbol
 
-        try:
-            #计算凸度
-            self.convexity=(self.callDict.values()[index-1].midImpv+self.putDict.values()[index+1].midImpv)/(self.callDict.values()[index].midImpv+self.putDict.values()[index].midImpv)*100.0
-        except Exception:
-            print "出问题了"
-            self.convexity=100
+        for option in self.optionDict.values():
+            option.r =self.chainRate
+            option.calculateOptionImpv()
+            option.calculateTheoGreeks()
+            option.calculatePosGreeks()
 
         try:
-            #计算偏度
-            delta = [abs(callOption.theoDelta - 0.25) for callOption in self.callDict.values()]
-            index1=delta.index(min(delta))
-            delta = [abs(callOption.theoDelta - 0.75) for callOption in self.callDict.values()]
-            index2 = delta.index(min(delta))
-            self.skew=100*self.callDict.values()[index1].midImpv/self.putDict.values()[index2].midImpv
+            #计算凸度
+            self.convexity=round((self.callDict.values()[index-1].midImpv+self.putDict.values()[index+1].midImpv)/(self.callDict.values()[index].midImpv+self.putDict.values()[index].midImpv)*100.0,2)
         except Exception:
-            self.skew=100
-        return self.chainRate
+            self.convexity=100
+
+            # 计算偏度
+        try:
+            delta = [abs(callOption.delta - 0.25) for callOption in self.callDict.values()]
+            index1 = delta.index(min(delta))
+            delta = [abs(callOption.delta - 0.75) for callOption in self.callDict.values()]
+            index2 = delta.index(min(delta))
+            self.skew = round(100 * self.putDict.values()[index2].midImpv / self.callDict.values()[index1].midImpv, 2)
+        except Exception:
+            self.skew = 100
+
     #----------------------------------------------------------------------
     def newTrade(self, trade):
         """期权成交更新"""
@@ -532,21 +655,15 @@ class OmPortfolio(object):
         if symbol in self.optionDict:
             chain = self.optionDict[symbol].chain
             chain.newTick(tick)
-            # self.calculatePosGreeks()  不需要实时计算持仓汇总，定时计算即可
         elif symbol in self.underlyingDict:
             underlying = self.underlyingDict[symbol]
             underlying.newTick(tick)
-            # self.calculatePosGreeks()  不需要实时计算持仓汇总，定时计算即可
 
     def timingCalculate(self,event):
         """定时计算希腊字母和波动率，不实时更新的是因为数据是一条一条返回过来的，比如服务器可能在0.5秒内就返回10多组数据给我，无法实时更新"""
         start = time.time()
-        for option in self.optionDict.values():
-            option.calculateOptionImpv()
-            option.calculateTheoGreeks()
-            option.calculatePosGreeks()
-
         for chain in self.chainDict.values():
+            chain.calculateChainRate()
             chain.calculatePosGreeks()
         self.calculatePosGreeks()
         end= time.time()
