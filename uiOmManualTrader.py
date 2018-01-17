@@ -5,9 +5,20 @@ from vnpy.event import Event
 from vnpy.trader.vtConstant import DIRECTION_LONG, DIRECTION_SHORT, OFFSET_OPEN, OFFSET_CLOSE, PRICETYPE_LIMITPRICE
 from vnpy.trader.vtObject import VtOrderReq
 from vnpy.trader.vtEvent import EVENT_TICK, EVENT_TRADE,EVENT_ORDER,EVENT_TIMER
-from vnpy.trader.uiBasicWidget import WorkingOrderMonitor, PositionMonitor
+from vnpy.trader.uiBasicWidget import WorkingOrderMonitor,BasicMonitor,BasicCell,NameCell,DirectionCell,PnlCell
 from uiOmBase import *
 
+import json
+import csv
+import os
+import platform
+from collections import OrderedDict
+
+from vnpy.trader.vtFunction import *
+from vnpy.trader.vtGateway import *
+from vnpy.trader import vtText
+from vnpy.trader.vtConstant import *
+from vnpy.trader.uiQt import QtGui, QtWidgets, QtCore, BASIC_FONT
 
 
 #change by lsm 20180104
@@ -949,7 +960,7 @@ class ManualTrader(QtWidgets.QWidget):
         """初始化界面"""
         self.setWindowTitle(u'手动交易')
         
-        # posMonitor = PositionMonitor(self.mainEngine, self.eventEngine)
+        posMonitor = PositionMonitor(self.mainEngine, self.eventEngine)
 
         optionAnalysisTable=OptionAnalysisTable(self.omEngine)
         # for i in range(OptionAnalysisTable.columnCount()):
@@ -971,7 +982,10 @@ class ManualTrader(QtWidgets.QWidget):
         # chainMonitor.itemDoubleClicked.connect(tradingWidget.updateWidget)
 
         vbox1 = QtWidgets.QVBoxLayout()
-        vbox1.addWidget(orderMonitor)
+        tab2 = QtWidgets.QTabWidget()
+        tab2.addTab(posMonitor, u'持仓')
+        tab2.addTab(orderMonitor, u'委托')
+        vbox1.addWidget(tab2)
         vbox1.addWidget(optionAnalysisTable)
         
         vbox2 = QtWidgets.QVBoxLayout()
@@ -1226,3 +1240,56 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.totalCellGamma.setText(str(self.portfolio.posGamma))
         self.totalCellVega.setText(str(self.portfolio.posVega))
         self.totalCellTheta.setText(str(self.portfolio.posTheta))
+
+# add by lsm 20180117
+########################################################################
+class PositionMonitor(BasicMonitor):
+    """持仓监控"""
+
+    # ----------------------------------------------------------------------
+    def __init__(self, mainEngine, eventEngine, parent=None):
+        """Constructor"""
+        super(PositionMonitor, self).__init__(mainEngine, eventEngine, parent)
+
+        d = OrderedDict()
+        d['symbol'] = {'chinese': vtText.CONTRACT_SYMBOL, 'cellType': BasicCell}
+        d['vtSymbol'] = {'chinese': vtText.CONTRACT_NAME, 'cellType': NameCell}
+        d['direction'] = {'chinese': vtText.DIRECTION, 'cellType': DirectionCell}
+        d['position'] = {'chinese': vtText.POSITION, 'cellType': BasicCell}
+        d['ydPosition'] = {'chinese': vtText.YD_POSITION, 'cellType': BasicCell}
+        d['frozen'] = {'chinese': vtText.FROZEN, 'cellType': BasicCell}
+        d['price'] = {'chinese': vtText.PRICE, 'cellType': BasicCell}
+        d['positionProfit'] = {'chinese': vtText.POSITION_PROFIT, 'cellType': PnlCell}
+        d['gatewayName'] = {'chinese': vtText.GATEWAY, 'cellType': BasicCell}
+        self.setHeaderDict(d)
+
+        self.setDataKey('vtPositionName')
+        self.setEventType(EVENT_POSITION)
+        self.setFont(BASIC_FONT)
+        self.setSaveData(True)
+        self.shouldRefresh=False
+
+        self.initTable()
+        # 注册事件监听
+        self.registerEvent()
+        self.eventEngine.register(EVENT_TRADE,self.changeShouldRefresh)
+
+    def registerEvent(self):
+        self.signal.connect(self.deleteAllRows)
+        self.signal.connect(self.updateEvent)
+        self.eventEngine.register(self.eventType, self.signal.emit)
+
+
+    def changeShouldRefresh(self,data):
+        self.shouldRefresh = True
+
+    def deleteAllRows(self,data):
+        if self.shouldRefresh:
+            iLen = len(self.dataDict.values())
+            print "11111111111111处理委托"
+            for i in range(0,iLen):
+                self.removeRow(0)
+            self.dataDict.clear()
+            self.shouldRefresh=False
+
+

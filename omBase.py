@@ -485,8 +485,11 @@ class OmChain(object):
         # comprehensiveImpv= [self.outOfTheMoneyImpv(atTheMoneyKPrice,callOption)  for callOption in self.callDict.values()]
         comprehensiveVega=[self.outOfTheMoneyVega(atTheMoneyKPrice,callOption)  for callOption in self.callDict.values()]
         totalVega=sum(comprehensiveVega)
- 
-        weightVega=[item/totalVega for item in comprehensiveVega]
+
+        try:
+            weightVega=[item/totalVega for item in comprehensiveVega]
+        except Exception:
+            return
 
         self.callImpv=sum([vega*impv for vega, impv in zip(weightVega,[callOption.midImpv for callOption in self.callDict.values()])])
         self.putImpv=sum([vega*impv for vega, impv in zip(weightVega,[callOption.midImpv for callOption in self.putDict.values()])])
