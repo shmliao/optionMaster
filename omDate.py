@@ -14,7 +14,7 @@ from vnpy.trader.uiQt import QtCore, QtWidgets, QtGui
 
 
 # 常量定义
-ANNUAL_TRADINGDAYS = 250
+ANNUAL_TRADINGDAYS = 260
 
 CALENDAR_FILENAME = 'TradingCalendar.csv'
 PATH = os.path.abspath(os.path.dirname(__file__))
@@ -247,6 +247,7 @@ def getTimeToMaturity(expiryDate):
     ttm = tradingDays/ANNUAL_TRADINGDAYS
     print '计算剩余的年化到期时间'+str(tradingDays)
     TTM_DICT[expiryDate] = ttm
+    print ttm
     return ttm
     
     

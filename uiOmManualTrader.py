@@ -5,7 +5,7 @@ from vnpy.event import Event
 from vnpy.trader.vtConstant import DIRECTION_LONG, DIRECTION_SHORT, OFFSET_OPEN, OFFSET_CLOSE, PRICETYPE_LIMITPRICE
 from vnpy.trader.vtObject import VtOrderReq
 from vnpy.trader.vtEvent import EVENT_TICK, EVENT_TRADE,EVENT_ORDER,EVENT_TIMER
-from vnpy.trader.uiBasicWidget import WorkingOrderMonitor,BasicMonitor,BasicCell,NameCell,DirectionCell,PnlCell
+from vnpy.trader.uiBasicWidget import WorkingOrderMonitor,BasicMonitor,BasicCell,NameCell,DirectionCell,PnlCell,AccountMonitor
 from uiOmBase import *
 
 import json
@@ -497,13 +497,10 @@ class FloatTradingWidget(QtWidgets.QWidget):
         if direction == DIRECTION_LONG:
             # 如果空头仓位大于等于买入量，则只需平
             if instrument.shortPos >= volume:
-                print "买开"+str(symbol)+str(volume)
                 self.fastTrade(symbol, DIRECTION_LONG, OFFSET_CLOSE, price, volume)
             # 否则先平后开
             else:
                 openVolume = volume - instrument.shortPos
-                print openVolume
-                print instrument.shortPos
                 if instrument.shortPos:
                     self.fastTrade(symbol, DIRECTION_LONG, OFFSET_CLOSE, price, instrument.shortPos)
                 self.fastTrade(symbol, DIRECTION_LONG, OFFSET_OPEN, price, openVolume)
@@ -511,9 +508,7 @@ class FloatTradingWidget(QtWidgets.QWidget):
         else:
             if self.shortOpenRadio.isChecked():
                 self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_OPEN, price, volume)
-                print "卖开"
             else:
-                print "卖平"
                 if instrument.longPos >= volume:
                     self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_CLOSE, price, volume)
                 else:
@@ -743,7 +738,7 @@ class QuickTradeTable(QtWidgets.QTableWidget):
         # 初始化
         self.initUi(item)
         self.eventEngine.register(EVENT_TICK + self.vtSymbol, self.processTickEvent)
-        self.eventEngine.register(EVENT_ORDER + self.vtSymbol, self.calculateOrderDict)
+        self.eventEngine.register(EVENT_ORDER , self.processOrderEvent)
 
     # ----------------------------------------------------------------------
     def initUi(self, item):
@@ -832,10 +827,10 @@ class QuickTradeTable(QtWidgets.QTableWidget):
         else:
             print '合约改了'
             self.eventEngine.unregister(EVENT_TICK + self.vtSymbol, self.processTickEvent)
-            self.eventEngine.unregister(EVENT_ORDER + self.vtSymbol, self.calculateOrderDict)
+            self.eventEngine.unregister(EVENT_ORDER , self.processOrderEvent)
             self.changePriceData(item)
             self.eventEngine.register(EVENT_TICK + vtSymbol, self.processTickEvent)
-            self.eventEngine.register(EVENT_ORDER + self.vtSymbol, self.calculateOrderDict)
+            self.eventEngine.register(EVENT_ORDER , self.processOrderEvent)
 
             self.vtSymbol = vtSymbol
 
@@ -843,12 +838,14 @@ class QuickTradeTable(QtWidgets.QTableWidget):
     def processTickEvent(self, event):
         """行情更新，价格列表,五档数据"""
         tick = event.dict_['data']
+        print "更新行情数据"
         self.changePriceData(tick)
 
     def processOrderEvent(self, event):
         """行情更新,委托列表"""
         tick = event.dict_['data']
         symbol = tick.vtSymbol
+        print "委托更新"
         self.changeOrderData(tick)
 
     def quickTrade(self):
@@ -873,13 +870,19 @@ class QuickTradeTable(QtWidgets.QTableWidget):
             for vtOrderID in localIDs:
                 order = self.getOrder(vtOrderID)
                 if order:
+                    print "找到了"
+                    print vtOrderID
                     req = VtCancelOrderReq()
                     req.symbol = order.symbol
                     req.exchange = order.exchange
                     req.frontID = order.frontID
                     req.sessionID = order.sessionID
                     req.orderID = order.orderID
+                    print req.symbol,req.exchange,req.frontID,req.sessionID,req.orderID
                     self.mainEngine.cancelOrder(req, 'SEC')
+                else:
+                    print "没找到"
+                    print vtOrderID
         else:
             print "没有东西"
 
@@ -910,9 +913,13 @@ class QuickTradeTable(QtWidgets.QTableWidget):
     def changeOrderData(self,item=None):
         """委托数据更新"""
         longVolumeDic, longLocalIDDic, shortVolumeDic, shortLocalIDDic = self.calculateOrderDict()
-        if longVolumeDic:
+        print "更新委托数据"
+        print longVolumeDic, longLocalIDDic, shortVolumeDic, shortLocalIDDic
+        if longVolumeDic or shortVolumeDic:
             for row in range(0, 40, 1):
                 priceAndVtSymbol = self.cellPriceDict[row].text() + self.vtSymbol
+
+                print priceAndVtSymbol
                 if priceAndVtSymbol in longVolumeDic.keys():
                     self.cellBidEntrust[row].setText(str(longVolumeDic[priceAndVtSymbol]))
                     self.cellBidEntrust[row].data=longLocalIDDic[priceAndVtSymbol]
@@ -961,6 +968,7 @@ class ManualTrader(QtWidgets.QWidget):
         self.setWindowTitle(u'手动交易')
         
         posMonitor = PositionMonitor(self.mainEngine, self.eventEngine)
+        accountMonitor=AccountMonitor(self.mainEngine, self.eventEngine)
 
         optionAnalysisTable=OptionAnalysisTable(self.omEngine)
         # for i in range(OptionAnalysisTable.columnCount()):
@@ -984,7 +992,8 @@ class ManualTrader(QtWidgets.QWidget):
         vbox1 = QtWidgets.QVBoxLayout()
         tab2 = QtWidgets.QTabWidget()
         tab2.addTab(posMonitor, u'持仓')
-        tab2.addTab(orderMonitor, u'委托')
+        tab2.addTab(orderMonitor, u'可撤委托')
+        tab2.addTab(accountMonitor,u'账户')
         vbox1.addWidget(tab2)
         vbox1.addWidget(optionAnalysisTable)
         
@@ -1286,10 +1295,226 @@ class PositionMonitor(BasicMonitor):
     def deleteAllRows(self,data):
         if self.shouldRefresh:
             iLen = len(self.dataDict.values())
-            print "11111111111111处理委托"
             for i in range(0,iLen):
                 self.removeRow(0)
             self.dataDict.clear()
             self.shouldRefresh=False
 
 
+# add by lsm 20180118
+class AccountTable(QtWidgets.QTableWidget):
+    """账户信息显示""",
+    headers = [
+        u'委托',
+        u'买量',
+        u'价格',
+        u'卖量',
+        u'委托',
+    ]
+
+    # ----------------------------------------------------------------------
+    def __init__(self,omEngine, parent=None):
+        """Constructor"""
+        super(AccountTable, self).__init__(parent)
+
+
+        self.omEngine = omEngine
+        self.mainEngine = omEngine.mainEngine
+        self.eventEngine = self.mainEngine.eventEngine
+
+        # 初始化
+        self.initUi(item)
+        self.eventEngine.register(EVENT_ACCOUNT, self.processAccountEvent)
+
+    # ----------------------------------------------------------------------
+    def initUi(self, item):
+        """初始化界面"""
+        # 初始化表格
+        self.setColumnCount(len(self.headers))
+
+        self.setHorizontalHeaderLabels(self.headers)
+
+        self.setRowCount(1)
+
+        self.verticalHeader().setVisible(False)
+        self.setEditTriggers(self.NoEditTriggers)
+
+        for i in range(self.columnCount()):
+            self.horizontalHeader().setResizeMode(i, QtWidgets.QHeaderView.Stretch)
+        self.horizontalHeader().setResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+        self.horizontalHeader().setResizeMode(self.columnCount() - 1, QtWidgets.QHeaderView.ResizeToContents)
+
+        # 初始化标的单元格
+        self.bidDict=dict(zip([item.bidPrice1, item.bidPrice2, item.bidPrice3, item.bidPrice4, item.bidPrice5],[item.bidVolume1, item.bidVolume2, item.bidVolume3, item.bidVolume4, item.bidVolume5]))
+        self.askDict=dict(zip( [item.askPrice5, item.askPrice4, item.askPrice3, item.askPrice2, item.askPrice1],[item.askVolume5, item.askVolume4, item.askVolume3, item.askVolume2, item.askVolume1]))
+
+        for row in range(-20,20,1):
+            price=item.lastPrice-row/10000.0
+            cellPrice = OmCell(str(price),COLOR_BLACK,COLOR_SYMBOL)
+
+            if price in self.bidDict.keys():
+                cellBid=OmCell(str(self.bidDict[price]),COLOR_BID,COLOR_BLACK)
+            else:
+                cellBid = OmCell("", COLOR_BID, COLOR_BLACK)
+
+            if price in self.askDict.keys():
+                askBid = OmCell(str(self.askDict[price]), COLOR_ASK, COLOR_BLACK)
+            else:
+                askBid = OmCell("", COLOR_ASK, COLOR_BLACK)
+
+            self.cellPriceDict[row+20]=cellPrice
+            self.cellBidVolume[row + 20] = cellBid
+
+            self.cellAskVolume[row + 20] = askBid
+
+            self.setItem(row+20, 2, cellPrice)
+            self.setItem(row + 20, 1, cellBid)
+            self.setItem(row + 20, 3, askBid)
+
+        self.initOrderCell()
+        self.itemDoubleClicked.connect(self.quickTrade)
+
+    def initOrderCell(self):
+        #委托量展示
+        longVolumeDic, longLocalIDDic, shortVolumeDic, shortLocalIDDic=self.calculateOrderDict()
+        if longVolumeDic:
+            for row in range(0, 40, 1):
+                priceAndVtSymbol = self.cellPriceDict[row].text()+self.vtSymbol
+                if priceAndVtSymbol in longVolumeDic.keys():
+                    bidEntrust=OmCell(str(longVolumeDic[priceAndVtSymbol]),COLOR_BID,COLOR_BLACK,longLocalIDDic[priceAndVtSymbol])
+                else:
+                    bidEntrust = OmCell("", COLOR_BID, COLOR_BLACK)
+                if priceAndVtSymbol in shortVolumeDic.keys():
+                    askEntrust = OmCell(str(shortVolumeDic[priceAndVtSymbol]), COLOR_ASK, COLOR_BLACK,shortLocalIDDic[priceAndVtSymbol])
+                else:
+                    askEntrust = OmCell("", COLOR_ASK, COLOR_BLACK)
+                self.cellBidEntrust[row]=bidEntrust
+                self.cellAskEntrust[row]=askEntrust
+
+                self.setItem(row,0, bidEntrust)
+                self.setItem(row,4, askEntrust)
+        else:
+            for row in range(0, 40, 1):
+                bidEntrust = OmCell("", COLOR_BID, COLOR_BLACK)
+                askEntrust = OmCell("", COLOR_ASK, COLOR_BLACK)
+                self.cellBidEntrust[row] = bidEntrust
+                self.cellAskEntrust[row] = askEntrust
+                self.setItem(row, 0, bidEntrust)
+                self.setItem(row, 4, askEntrust)
+
+
+
+    # ----------------------------------------------------------------------
+    def registerEvent(self, item, vtSymbol):
+        """注册事件监听"""
+        if vtSymbol == self.vtSymbol:
+            print '一样'
+            return
+        else:
+            print '合约改了'
+            self.eventEngine.unregister(EVENT_TICK + self.vtSymbol, self.processTickEvent)
+            self.eventEngine.unregister(EVENT_ORDER + self.vtSymbol, self.calculateOrderDict)
+            self.changePriceData(item)
+            self.eventEngine.register(EVENT_TICK + vtSymbol, self.processTickEvent)
+            self.eventEngine.register(EVENT_ORDER + self.vtSymbol, self.calculateOrderDict)
+
+            self.vtSymbol = vtSymbol
+
+    # ----------------------------------------------------------------------
+    def processTickEvent(self, event):
+        """行情更新，价格列表,五档数据"""
+        tick = event.dict_['data']
+        self.changePriceData(tick)
+
+    def processOrderEvent(self, event):
+        """行情更新,委托列表"""
+        tick = event.dict_['data']
+        symbol = tick.vtSymbol
+        self.changeOrderData(tick)
+
+    def quickTrade(self):
+        '''左击事件:快速下单!'''
+        longPrice=float(self.cellPriceDict[self.currentRow()].text())
+        if self.currentColumn()==0:
+            self.parentMonitor.sendOrder(DIRECTION_LONG,longPrice)
+        elif self.currentColumn()==4:
+            self.parentMonitor.sendOrder(DIRECTION_SHORT, longPrice)
+
+
+
+    def contextMenuEvent(self,event):
+        if self.currentColumn()==0:
+            localIDs = self.cellBidEntrust[self.currentRow()].data
+        elif self.currentColumn()==4:
+            localIDs = self.cellAskEntrust[self.currentRow()].data
+        if localIDs:
+            for vtOrderID in localIDs:
+                order = self.getOrder(vtOrderID)
+                if order:
+                    req = VtCancelOrderReq()
+                    req.symbol = order.symbol
+                    req.exchange = order.exchange
+                    req.frontID = order.frontID
+                    req.sessionID = order.sessionID
+                    req.orderID = order.orderID
+                    self.mainEngine.cancelOrder(req, 'SEC')
+        else:
+            print "没有东西"
+
+    # ---------------------------------------------------------------------
+    def changePriceData(self, item):
+        """行情更新，价格列表,五档数据"""
+        # 初始化标的单元格
+        self.bidDict = dict(zip([item.bidPrice1, item.bidPrice2, item.bidPrice3, item.bidPrice4, item.bidPrice5],
+                                [item.bidVolume1, item.bidVolume2, item.bidVolume3, item.bidVolume4, item.bidVolume5]))
+        self.askDict = dict(zip([item.askPrice5, item.askPrice4, item.askPrice3, item.askPrice2, item.askPrice1],
+                                [item.askVolume5, item.askVolume4, item.askVolume3, item.askVolume2, item.askVolume1]))
+
+        for row in range(-20, 20, 1):
+            price = item.lastPrice - row / 10000.0
+            self.cellPriceDict[row + 20].setText(str(price))
+            if price in self.bidDict.keys():
+                self.cellBidVolume[row + 20].setText(str(self.bidDict[price]))
+            else:
+                self.cellBidVolume[row + 20].setText("")
+
+
+            if price in self.askDict.keys():
+                self.cellAskVolume[row + 20].setText(str(self.askDict[price]))
+            else:
+                self.cellAskVolume[row + 20].setText("")
+        self.changeOrderData()
+
+    def changeOrderData(self,item=None):
+        """委托数据更新"""
+        longVolumeDic, longLocalIDDic, shortVolumeDic, shortLocalIDDic = self.calculateOrderDict()
+        if longVolumeDic:
+            for row in range(0, 40, 1):
+                priceAndVtSymbol = self.cellPriceDict[row].text() + self.vtSymbol
+                if priceAndVtSymbol in longVolumeDic.keys():
+                    self.cellBidEntrust[row].setText(str(longVolumeDic[priceAndVtSymbol]))
+                    self.cellBidEntrust[row].data=longLocalIDDic[priceAndVtSymbol]
+                else:
+                    self.cellBidEntrust[row].setText("")
+                    self.cellBidEntrust[row].data=None
+
+                if priceAndVtSymbol in shortVolumeDic.keys():
+                    self.cellAskEntrust[row].setText(str(shortVolumeDic[priceAndVtSymbol]))
+                    self.cellAskEntrust[row].data = shortLocalIDDic[priceAndVtSymbol]
+                else:
+                    self.cellAskEntrust[row].setText("")
+                    self.cellAskEntrust[row].data = None
+        else:
+            for row in range(0, 40, 1):
+                self.cellAskEntrust[row].setText("")
+                self.cellAskEntrust[row].data = None
+                self.cellBidEntrust[row].setText("")
+                self.cellBidEntrust[row].data = None
+    #
+    def getOrder(self,vtOrderID):
+        """查询单个合约的委托"""
+        return self.mainEngine.getOrder(vtOrderID)
+
+    def calculateOrderDict(self,event=None):
+        """查询单个合约的委托"""
+        return self.mainEngine.calculateOrderDict()

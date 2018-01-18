@@ -9,7 +9,7 @@ from vnpy.trader.vtConstant import *
 from vnpy.trader.vtObject import VtTickData
 from vnpy.trader.vtEvent import EVENT_TIMER, EVENT_TRADE, EVENT_ORDER
 
-from .omDate import getTimeToMaturity
+from .omDate import getTimeToMaturity,ANNUAL_TRADINGDAYS
 from math import (log, pow, sqrt, exp)
 import time
 # 常量定义
@@ -229,12 +229,15 @@ class OmOption(OmInstrument):
         underlyingPrice = self.underlying.midPrice
 
         if not underlyingPrice:
-            return        
+            return
 
         self.askImpv = self.calculateImpv(self.askPrice1, underlyingPrice, self.k,
                                           self.r, self.t, self.cp)
         self.bidImpv = self.calculateImpv(self.bidPrice1, underlyingPrice, self.k,
                                           self.r, self.t, self.cp)
+
+        # self.midImpv = self.calculateImpv(self.midPrice, underlyingPrice, self.k,
+        #                                   self.r, self.t, self.cp)
         self.midImpv = (self.askImpv + self.bidImpv) / 2
     
     #----------------------------------------------------------------------
@@ -256,10 +259,11 @@ class OmOption(OmInstrument):
                                                                                   self.t,
                                                                                   callorPutImpv,
                                                                                   self.cp)
-
-        self.theoDelta = round(self.delta * self.size,2)
-        self.theoGamma = round(self.gamma * self.size,2)
-        self.theoTheta = round(self.theta * self.size,2)
+        # delta f * 0.01
+        # vega * 0.01
+        self.theoDelta = round(self.delta * self.size*underlyingPrice*0.01,2)
+        self.theoGamma = round(self.gamma * self.size*pow(underlyingPrice, 2) * 0.0001,2)
+        self.theoTheta = round(self.theta * self.size/ANNUAL_TRADINGDAYS,2)
         self.theoVega = round(self.vega * self.size,2)
         self.calculatePosGreeks()
 
@@ -298,7 +302,6 @@ class OmOption(OmInstrument):
         """行情更新"""
         super(OmOption, self).newTick(tick)
         # self.r=self.chain.calculateChainRate()
-        # print "newTick" + str(self.r)
         # self.calculateOptionImpv()
     
     #----------------------------------------------------------------------
@@ -416,7 +419,6 @@ class OmChain(object):
     def newTick(self, tick):
         """期权行情更新"""
         option = self.optionDict[tick.symbol]
-        # print '期权价格发生变化你应该在这里计算利率'
         option.newTick(tick)
         # rate = self.calculateChainRate()
         # for option in self.optionDict.values():
@@ -459,16 +461,17 @@ class OmChain(object):
         atTheMoneyKPrice=self.putDict.values()[minIndex].k
         for index in range(-2+minIndex,3+minIndex,1):
             try:
-                callPrice = self.callDict.values()[index].midPrice
-                putPrice=self.putDict.values()[index].midPrice
+                callPrice = self.callDict.values()[index].lastPrice
+                putPrice=self.putDict.values()[index].lastPrice
                 f = callPrice - putPrice+ self.putDict.values()[index].k
-                r = log(f / self.underlying.midPrice) / self.putDict.values()[index].t
+                r = log(f / self.underlying.lastPrice) / self.putDict.values()[index].t
                 rateArray.append(r)
             except Exception:
-                rateArray.append(self.chainRate)
+                pass
+                # rateArray.append(self.chainRate)
         self.chainRate=round(sum(rateArray)/len(rateArray),4)
         self.atTheMoneySymbol=self.callDict.values()[minIndex].symbol
-
+        print rateArray
 
         # 计算每个合约的vega和隐含波动率
         for option in self.optionDict.values():
@@ -498,7 +501,7 @@ class OmChain(object):
         self.putImpv = round(self.putImpv, 4)
 
         [callOption.calculateTheoGreeksAndPosGreeks(self.callImpv) for callOption in self.callDict.values()]
-        [callOption.calculateTheoGreeksAndPosGreeks(self.putImpv) for putOption in self.putDict.values()]
+        [putOption.calculateTheoGreeksAndPosGreeks(self.putImpv) for putOption in self.putDict.values()]
 
             # 计算偏度
         try:
@@ -670,7 +673,7 @@ class OmPortfolio(object):
             chain.calculatePosGreeks()
         self.calculatePosGreeks()
         end= time.time()
-        print end-start
+        # print end-start
     #----------------------------------------------------------------------
     def newTrade(self, trade):
         """成交推送"""
