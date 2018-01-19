@@ -7,6 +7,7 @@ from vnpy.trader.vtObject import VtOrderReq
 from vnpy.trader.vtEvent import EVENT_TICK, EVENT_TRADE,EVENT_ORDER,EVENT_TIMER
 from vnpy.trader.uiBasicWidget import WorkingOrderMonitor,BasicMonitor,BasicCell,NameCell,DirectionCell,PnlCell,AccountMonitor
 from uiOmBase import *
+from omDate import CalendarManager
 
 import json
 import csv
@@ -244,13 +245,13 @@ class ChainMonitor(QtWidgets.QTableWidget):
 
 
 ########################################################################
-class TradingWidget(QtWidgets.QWidget):
+class NewTradingWidget(QtWidgets.QWidget):
     """交易组件"""
 
     #----------------------------------------------------------------------
     def __init__(self, omEngine, parent=None):
         """Constructor"""
-        super(TradingWidget, self).__init__(parent)
+        super(NewTradingWidget, self).__init__(parent)
         
         self.omEngine = omEngine
         self.mainEngine = omEngine.mainEngine
@@ -362,6 +363,471 @@ class TradingWidget(QtWidgets.QWidget):
             self.comboDirection.setCurrentIndex(0)
             self.linePrice.setText(str(instrument.askPrice1))
             self.lineVolume.setText(str(instrument.askVolume1))
+
+#change by lsm 20180119
+class TradingWidget(QtWidgets.QFrame):
+            """简单交易组件"""
+            signal = QtCore.Signal(type(Event()))
+            directionList = [DIRECTION_LONG,
+                             DIRECTION_SHORT]
+
+            offsetList = [OFFSET_OPEN,
+                          OFFSET_CLOSE,
+                          OFFSET_CLOSEYESTERDAY,
+                          OFFSET_CLOSETODAY]
+
+            priceTypeList = [PRICETYPE_LIMITPRICE,
+                             PRICETYPE_MARKETPRICE,
+                             PRICETYPE_FAK,
+                             PRICETYPE_FOK]
+
+            exchangeList = [EXCHANGE_NONE,
+                            EXCHANGE_CFFEX,
+                            EXCHANGE_SHFE,
+                            EXCHANGE_DCE,
+                            EXCHANGE_CZCE,
+                            EXCHANGE_SSE,
+                            EXCHANGE_SZSE,
+                            EXCHANGE_SGE,
+                            EXCHANGE_HKEX,
+                            EXCHANGE_HKFE,
+                            EXCHANGE_SMART,
+                            EXCHANGE_ICE,
+                            EXCHANGE_CME,
+                            EXCHANGE_NYMEX,
+                            EXCHANGE_LME,
+                            EXCHANGE_GLOBEX,
+                            EXCHANGE_IDEALPRO]
+
+            currencyList = [CURRENCY_NONE,
+                            CURRENCY_CNY,
+                            CURRENCY_HKD,
+                            CURRENCY_USD]
+
+            productClassList = [PRODUCT_NONE,
+                                PRODUCT_EQUITY,
+                                PRODUCT_FUTURES,
+                                PRODUCT_OPTION,
+                                PRODUCT_FOREX]
+
+            gatewayList = ['']
+
+            # ----------------------------------------------------------------------
+            def __init__(self, mainEngine, eventEngine, parent=None):
+                """Constructor"""
+                super(TradingWidget, self).__init__(parent)
+                self.mainEngine = mainEngine
+                self.eventEngine = eventEngine
+
+                self.symbol = ''
+
+                # 添加交易接口
+                l = mainEngine.getAllGatewayDetails()
+                gatewayNameList = [d['gatewayName'] for d in l]
+                self.gatewayList.extend(gatewayNameList)
+
+                self.initUi()
+                self.connectSignal()
+
+            # ----------------------------------------------------------------------
+            def initUi(self):
+                """初始化界面"""
+                self.setWindowTitle(vtText.TRADING)
+                self.setMaximumWidth(400)
+                self.setFrameShape(self.Box)  # 设置边框
+                self.setLineWidth(1)
+
+                # 左边部分
+                labelSymbol = QtWidgets.QLabel(vtText.CONTRACT_SYMBOL)
+                labelName = QtWidgets.QLabel(vtText.CONTRACT_NAME)
+                labelDirection = QtWidgets.QLabel(vtText.DIRECTION)
+                labelOffset = QtWidgets.QLabel(vtText.OFFSET)
+                labelPrice = QtWidgets.QLabel(vtText.PRICE)
+                self.checkFixed = QtWidgets.QCheckBox(u'')  # 价格固定选择框
+                labelVolume = QtWidgets.QLabel(vtText.VOLUME)
+                labelPriceType = QtWidgets.QLabel(vtText.PRICE_TYPE)
+                labelExchange = QtWidgets.QLabel(vtText.EXCHANGE)
+                labelCurrency = QtWidgets.QLabel(vtText.CURRENCY)
+                labelProductClass = QtWidgets.QLabel(vtText.PRODUCT_CLASS)
+                labelGateway = QtWidgets.QLabel(vtText.GATEWAY)
+
+                self.lineSymbol = QtWidgets.QLineEdit()
+                self.lineName = QtWidgets.QLineEdit()
+
+                self.comboDirection = QtWidgets.QComboBox()
+                self.comboDirection.addItems(self.directionList)
+
+                self.comboOffset = QtWidgets.QComboBox()
+                self.comboOffset.addItems(self.offsetList)
+
+                self.spinPrice = QtWidgets.QDoubleSpinBox()
+                self.spinPrice.setDecimals(4)
+                self.spinPrice.setMinimum(0)
+                self.spinPrice.setMaximum(100000)
+
+                self.spinVolume = QtWidgets.QSpinBox()
+                self.spinVolume.setMinimum(0)
+                self.spinVolume.setMaximum(1000000)
+
+                self.comboPriceType = QtWidgets.QComboBox()
+                self.comboPriceType.addItems(self.priceTypeList)
+
+                self.comboExchange = QtWidgets.QComboBox()
+                self.comboExchange.addItems(self.exchangeList)
+
+                self.comboCurrency = QtWidgets.QComboBox()
+                self.comboCurrency.addItems(self.currencyList)
+
+                self.comboProductClass = QtWidgets.QComboBox()
+                self.comboProductClass.addItems(self.productClassList)
+
+                self.comboGateway = QtWidgets.QComboBox()
+                self.comboGateway.addItems(self.gatewayList)
+
+                gridleft = QtWidgets.QGridLayout()
+                gridleft.addWidget(labelSymbol, 0, 0)
+                gridleft.addWidget(labelName, 1, 0)
+                gridleft.addWidget(labelDirection, 2, 0)
+                gridleft.addWidget(labelOffset, 3, 0)
+                gridleft.addWidget(labelPrice, 4, 0)
+                gridleft.addWidget(labelVolume, 5, 0)
+                gridleft.addWidget(labelPriceType, 6, 0)
+                gridleft.addWidget(labelExchange, 7, 0)
+                gridleft.addWidget(labelCurrency, 8, 0)
+                gridleft.addWidget(labelProductClass, 9, 0)
+                gridleft.addWidget(labelGateway, 10, 0)
+
+                gridleft.addWidget(self.lineSymbol, 0, 1, 1, -1)
+                gridleft.addWidget(self.lineName, 1, 1, 1, -1)
+                gridleft.addWidget(self.comboDirection, 2, 1, 1, -1)
+                gridleft.addWidget(self.comboOffset, 3, 1, 1, -1)
+                gridleft.addWidget(self.checkFixed, 4, 1)
+                gridleft.addWidget(self.spinPrice, 4, 2)
+                gridleft.addWidget(self.spinVolume, 5, 1, 1, -1)
+                gridleft.addWidget(self.comboPriceType, 6, 1, 1, -1)
+                gridleft.addWidget(self.comboExchange, 7, 1, 1, -1)
+                gridleft.addWidget(self.comboCurrency, 8, 1, 1, -1)
+                gridleft.addWidget(self.comboProductClass, 9, 1, 1, -1)
+                gridleft.addWidget(self.comboGateway, 10, 1, 1, -1)
+
+                # 右边部分
+                labelBid1 = QtWidgets.QLabel(vtText.BID_1)
+                labelBid2 = QtWidgets.QLabel(vtText.BID_2)
+                labelBid3 = QtWidgets.QLabel(vtText.BID_3)
+                labelBid4 = QtWidgets.QLabel(vtText.BID_4)
+                labelBid5 = QtWidgets.QLabel(vtText.BID_5)
+
+                labelAsk1 = QtWidgets.QLabel(vtText.ASK_1)
+                labelAsk2 = QtWidgets.QLabel(vtText.ASK_2)
+                labelAsk3 = QtWidgets.QLabel(vtText.ASK_3)
+                labelAsk4 = QtWidgets.QLabel(vtText.ASK_4)
+                labelAsk5 = QtWidgets.QLabel(vtText.ASK_5)
+
+                self.labelBidPrice1 = QtWidgets.QLabel()
+                self.labelBidPrice2 = QtWidgets.QLabel()
+                self.labelBidPrice3 = QtWidgets.QLabel()
+                self.labelBidPrice4 = QtWidgets.QLabel()
+                self.labelBidPrice5 = QtWidgets.QLabel()
+                self.labelBidVolume1 = QtWidgets.QLabel()
+                self.labelBidVolume2 = QtWidgets.QLabel()
+                self.labelBidVolume3 = QtWidgets.QLabel()
+                self.labelBidVolume4 = QtWidgets.QLabel()
+                self.labelBidVolume5 = QtWidgets.QLabel()
+
+                self.labelAskPrice1 = QtWidgets.QLabel()
+                self.labelAskPrice2 = QtWidgets.QLabel()
+                self.labelAskPrice3 = QtWidgets.QLabel()
+                self.labelAskPrice4 = QtWidgets.QLabel()
+                self.labelAskPrice5 = QtWidgets.QLabel()
+                self.labelAskVolume1 = QtWidgets.QLabel()
+                self.labelAskVolume2 = QtWidgets.QLabel()
+                self.labelAskVolume3 = QtWidgets.QLabel()
+                self.labelAskVolume4 = QtWidgets.QLabel()
+                self.labelAskVolume5 = QtWidgets.QLabel()
+
+                labelLast = QtWidgets.QLabel(vtText.LAST)
+                self.labelLastPrice = QtWidgets.QLabel()
+                self.labelReturn = QtWidgets.QLabel()
+
+                self.labelLastPrice.setMinimumWidth(60)
+                self.labelReturn.setMinimumWidth(60)
+
+                gridRight = QtWidgets.QGridLayout()
+                gridRight.addWidget(labelAsk5, 0, 0)
+                gridRight.addWidget(labelAsk4, 1, 0)
+                gridRight.addWidget(labelAsk3, 2, 0)
+                gridRight.addWidget(labelAsk2, 3, 0)
+                gridRight.addWidget(labelAsk1, 4, 0)
+                gridRight.addWidget(labelLast, 5, 0)
+                gridRight.addWidget(labelBid1, 6, 0)
+                gridRight.addWidget(labelBid2, 7, 0)
+                gridRight.addWidget(labelBid3, 8, 0)
+                gridRight.addWidget(labelBid4, 9, 0)
+                gridRight.addWidget(labelBid5, 10, 0)
+
+                gridRight.addWidget(self.labelAskPrice5, 0, 1)
+                gridRight.addWidget(self.labelAskPrice4, 1, 1)
+                gridRight.addWidget(self.labelAskPrice3, 2, 1)
+                gridRight.addWidget(self.labelAskPrice2, 3, 1)
+                gridRight.addWidget(self.labelAskPrice1, 4, 1)
+                gridRight.addWidget(self.labelLastPrice, 5, 1)
+                gridRight.addWidget(self.labelBidPrice1, 6, 1)
+                gridRight.addWidget(self.labelBidPrice2, 7, 1)
+                gridRight.addWidget(self.labelBidPrice3, 8, 1)
+                gridRight.addWidget(self.labelBidPrice4, 9, 1)
+                gridRight.addWidget(self.labelBidPrice5, 10, 1)
+
+                gridRight.addWidget(self.labelAskVolume5, 0, 2)
+                gridRight.addWidget(self.labelAskVolume4, 1, 2)
+                gridRight.addWidget(self.labelAskVolume3, 2, 2)
+                gridRight.addWidget(self.labelAskVolume2, 3, 2)
+                gridRight.addWidget(self.labelAskVolume1, 4, 2)
+                gridRight.addWidget(self.labelReturn, 5, 2)
+                gridRight.addWidget(self.labelBidVolume1, 6, 2)
+                gridRight.addWidget(self.labelBidVolume2, 7, 2)
+                gridRight.addWidget(self.labelBidVolume3, 8, 2)
+                gridRight.addWidget(self.labelBidVolume4, 9, 2)
+                gridRight.addWidget(self.labelBidVolume5, 10, 2)
+
+                # 发单按钮
+                buttonSendOrder = QtWidgets.QPushButton(vtText.SEND_ORDER)
+                buttonCancelAll = QtWidgets.QPushButton(vtText.CANCEL_ALL)
+
+                size = buttonSendOrder.sizeHint()
+                buttonSendOrder.setMinimumHeight(size.height() )  # 把按钮高度设为默认两倍
+                buttonCancelAll.setMinimumHeight(size.height() )
+
+                # 整合布局
+                hbox = QtWidgets.QHBoxLayout()
+                hbox.addLayout(gridleft)
+                hbox.addLayout(gridRight)
+
+                vbox = QtWidgets.QVBoxLayout()
+                vbox.addLayout(hbox)
+                vbox.addWidget(buttonSendOrder)
+                vbox.addWidget(buttonCancelAll)
+                vbox.addStretch()
+
+                self.setLayout(vbox)
+
+                # 关联更新
+                buttonSendOrder.clicked.connect(self.slotWarningSendOrder)
+                buttonCancelAll.clicked.connect(self.slotWarningCancelAllOrder)
+                self.lineSymbol.returnPressed.connect(self.updateSymbol)
+
+            def slotWarningSendOrder(self):
+                button = QtWidgets.QMessageBox.warning(self, "Warning",
+                                             u"确认交易",
+                                             u"确认",
+                                             u"取消")
+                if button == 0:
+                    self.sendOrder()
+                elif button == 1:
+                    pass
+                else:
+                    return
+
+            def slotWarningCancelAllOrder(self):
+                button = QtWidgets.QMessageBox.warning(self, "Warning",
+                                                        u"确认撤销全部委托？",
+                                                        u"确认",
+                                                        u"取消")
+                if button == 0:
+                    self.cancelAll()
+                elif button == 1:
+                    pass
+                else:
+                    return
+
+
+            # ----------------------------------------------------------------------
+            def updateSymbol(self):
+                """合约变化"""
+                # 读取组件数据
+                symbol = str(self.lineSymbol.text())
+                exchange = unicode(self.comboExchange.currentText())
+                currency = unicode(self.comboCurrency.currentText())
+                productClass = unicode(self.comboProductClass.currentText())
+                gatewayName = unicode(self.comboGateway.currentText())
+
+                # 查询合约
+                if exchange:
+                    vtSymbol = '.'.join([symbol, exchange])
+                    contract = self.mainEngine.getContract(vtSymbol)
+                else:
+                    vtSymbol = symbol
+                    contract = self.mainEngine.getContract(symbol)
+
+                if contract:
+                    vtSymbol = contract.vtSymbol
+                    gatewayName = contract.gatewayName
+                    self.lineName.setText(contract.name)
+                    exchange = contract.exchange  # 保证有交易所代码
+
+                # 清空价格数量
+                self.spinPrice.setValue(0)
+                self.spinVolume.setValue(0)
+
+                # 清空行情显示
+                self.labelBidPrice1.setText('')
+                self.labelBidPrice2.setText('')
+                self.labelBidPrice3.setText('')
+                self.labelBidPrice4.setText('')
+                self.labelBidPrice5.setText('')
+                self.labelBidVolume1.setText('')
+                self.labelBidVolume2.setText('')
+                self.labelBidVolume3.setText('')
+                self.labelBidVolume4.setText('')
+                self.labelBidVolume5.setText('')
+                self.labelAskPrice1.setText('')
+                self.labelAskPrice2.setText('')
+                self.labelAskPrice3.setText('')
+                self.labelAskPrice4.setText('')
+                self.labelAskPrice5.setText('')
+                self.labelAskVolume1.setText('')
+                self.labelAskVolume2.setText('')
+                self.labelAskVolume3.setText('')
+                self.labelAskVolume4.setText('')
+                self.labelAskVolume5.setText('')
+                self.labelLastPrice.setText('')
+                self.labelReturn.setText('')
+
+                # 重新注册事件监听
+                self.eventEngine.unregister(EVENT_TICK + self.symbol, self.signal.emit)
+                self.eventEngine.register(EVENT_TICK + vtSymbol, self.signal.emit)
+
+                # 订阅合约
+                req = VtSubscribeReq()
+                req.symbol = symbol
+                req.exchange = exchange
+                req.currency = currency
+                req.productClass = productClass
+
+                # 默认跟随价
+                self.checkFixed.setChecked(False)
+
+                self.mainEngine.subscribe(req, gatewayName)
+
+                # 更新组件当前交易的合约
+                self.symbol = vtSymbol
+
+            # ----------------------------------------------------------------------
+            def updateTick(self, event):
+                """更新行情"""
+                tick = event.dict_['data']
+
+                if tick.vtSymbol == self.symbol:
+                    if not self.checkFixed.isChecked():
+                        self.spinPrice.setValue(tick.lastPrice)
+                    self.labelBidPrice1.setText(str(tick.bidPrice1))
+                    self.labelAskPrice1.setText(str(tick.askPrice1))
+                    self.labelBidVolume1.setText(str(tick.bidVolume1))
+                    self.labelAskVolume1.setText(str(tick.askVolume1))
+
+                    if tick.bidPrice2:
+                        self.labelBidPrice2.setText(str(tick.bidPrice2))
+                        self.labelBidPrice3.setText(str(tick.bidPrice3))
+                        self.labelBidPrice4.setText(str(tick.bidPrice4))
+                        self.labelBidPrice5.setText(str(tick.bidPrice5))
+
+                        self.labelAskPrice2.setText(str(tick.askPrice2))
+                        self.labelAskPrice3.setText(str(tick.askPrice3))
+                        self.labelAskPrice4.setText(str(tick.askPrice4))
+                        self.labelAskPrice5.setText(str(tick.askPrice5))
+
+                        self.labelBidVolume2.setText(str(tick.bidVolume2))
+                        self.labelBidVolume3.setText(str(tick.bidVolume3))
+                        self.labelBidVolume4.setText(str(tick.bidVolume4))
+                        self.labelBidVolume5.setText(str(tick.bidVolume5))
+
+                        self.labelAskVolume2.setText(str(tick.askVolume2))
+                        self.labelAskVolume3.setText(str(tick.askVolume3))
+                        self.labelAskVolume4.setText(str(tick.askVolume4))
+                        self.labelAskVolume5.setText(str(tick.askVolume5))
+
+                    self.labelLastPrice.setText(str(tick.lastPrice))
+
+                    if tick.preClosePrice:
+                        rt = (tick.lastPrice / tick.preClosePrice) - 1
+                        self.labelReturn.setText(('%.2f' % (rt * 100)) + '%')
+                    else:
+                        self.labelReturn.setText('')
+
+            # ----------------------------------------------------------------------
+            def connectSignal(self):
+                """连接Signal"""
+                self.signal.connect(self.updateTick)
+
+            # ----------------------------------------------------------------------
+            def sendOrder(self):
+                """发单"""
+                symbol = str(self.lineSymbol.text())
+                exchange = unicode(self.comboExchange.currentText())
+                currency = unicode(self.comboCurrency.currentText())
+                productClass = unicode(self.comboProductClass.currentText())
+                gatewayName = unicode(self.comboGateway.currentText())
+
+                # 查询合约
+                if exchange:
+                    vtSymbol = '.'.join([symbol, exchange])
+                    contract = self.mainEngine.getContract(vtSymbol)
+                else:
+                    vtSymbol = symbol
+                    contract = self.mainEngine.getContract(symbol)
+
+                if contract:
+                    gatewayName = contract.gatewayName
+                    exchange = contract.exchange  # 保证有交易所代码
+
+                req = VtOrderReq()
+                req.symbol = symbol
+                req.exchange = exchange
+                req.vtSymbol = contract.vtSymbol
+                req.price = self.spinPrice.value()
+                req.volume = self.spinVolume.value()
+                req.direction = unicode(self.comboDirection.currentText())
+                req.priceType = unicode(self.comboPriceType.currentText())
+                req.offset = unicode(self.comboOffset.currentText())
+                req.currency = currency
+                req.productClass = productClass
+
+                self.mainEngine.sendOrder(req, gatewayName)
+
+            # ----------------------------------------------------------------------
+            def cancelAll(self):
+                """一键撤销所有委托"""
+                l = self.mainEngine.getAllWorkingOrders()
+                for order in l:
+                    req = VtCancelOrderReq()
+                    req.symbol = order.symbol
+                    req.exchange = order.exchange
+                    req.frontID = order.frontID
+                    req.sessionID = order.sessionID
+                    req.orderID = order.orderID
+                    self.mainEngine.cancelOrder(req, order.gatewayName)
+
+            # ----------------------------------------------------------------------
+            def closePosition(self, cell):
+                """根据持仓信息自动填写交易组件"""
+                # 读取持仓数据，cell是一个表格中的单元格对象
+                pos = cell.data
+                symbol = pos.symbol
+
+                # 更新交易组件的显示合约
+                self.lineSymbol.setText(symbol)
+                self.updateSymbol()
+
+                # 自动填写信息
+                self.comboPriceType.setCurrentIndex(self.priceTypeList.index(PRICETYPE_LIMITPRICE))
+                self.comboOffset.setCurrentIndex(self.offsetList.index(OFFSET_CLOSE))
+                self.spinVolume.setValue(pos.position)
+
+                if pos.direction == DIRECTION_LONG or pos.direction == DIRECTION_NET:
+                    self.comboDirection.setCurrentIndex(self.directionList.index(DIRECTION_SHORT))
+                else:
+                    self.comboDirection.setCurrentIndex(self.directionList.index(DIRECTION_LONG))
+
+                    # 价格留待更新后由用户输入，防止有误操作
 
 # add by lsm 20180104
 class FloatTradingWidget(QtWidgets.QWidget):
@@ -913,8 +1379,6 @@ class QuickTradeTable(QtWidgets.QTableWidget):
     def changeOrderData(self,item=None):
         """委托数据更新"""
         longVolumeDic, longLocalIDDic, shortVolumeDic, shortLocalIDDic = self.calculateOrderDict()
-        print "更新委托数据"
-        print longVolumeDic, longLocalIDDic, shortVolumeDic, shortLocalIDDic
         if longVolumeDic or shortVolumeDic:
             for row in range(0, 40, 1):
                 priceAndVtSymbol = self.cellPriceDict[row].text() + self.vtSymbol
@@ -966,7 +1430,6 @@ class ManualTrader(QtWidgets.QWidget):
     def initUi(self):
         """初始化界面"""
         self.setWindowTitle(u'手动交易')
-        
         posMonitor = PositionMonitor(self.mainEngine, self.eventEngine)
         accountMonitor=AccountMonitor(self.mainEngine, self.eventEngine)
 
@@ -979,13 +1442,15 @@ class ManualTrader(QtWidgets.QWidget):
         for i in range(orderMonitor.columnCount()):
             orderMonitor.horizontalHeader().setResizeMode(QtWidgets.QHeaderView.Stretch)
         orderMonitor.setSorting(False)
-            
+
 
         
         # chainMonitor = ChainMonitor(self.omEngine, self.eventEngine)
         # chainMonitor.itemDoubleClicked.connect(tradingWidget.updateWidget)
-        tradingWidget = TradingWidget(self.omEngine)
-
+        tradingWidget = TradingWidget(self.mainEngine,self.eventEngine)
+        calendarManager=CalendarManager()
+        # 持仓双击调到交易页面，方便平仓
+        posMonitor.itemDoubleClicked.connect(tradingWidget.closePosition)
         # chainMonitor = ChainMonitor(self.omEngine, self.eventEngine)
         # chainMonitor.itemDoubleClicked.connect(tradingWidget.updateWidget)
 
@@ -994,6 +1459,8 @@ class ManualTrader(QtWidgets.QWidget):
         tab2.addTab(posMonitor, u'持仓')
         tab2.addTab(orderMonitor, u'可撤委托')
         tab2.addTab(accountMonitor,u'账户')
+        tab2.addTab(calendarManager, u'到期日管理')
+
         vbox1.addWidget(tab2)
         vbox1.addWidget(optionAnalysisTable)
         
@@ -1015,8 +1482,8 @@ class ManualTrader(QtWidgets.QWidget):
 
         
         hbox = QtWidgets.QHBoxLayout()
-        hbox.addLayout(vbox1)
         hbox.addLayout(vbox2)
+        hbox.addLayout(vbox1)
         
         vbox3 = QtWidgets.QVBoxLayout()
         vbox3.addWidget(tab)

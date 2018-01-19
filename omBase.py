@@ -264,7 +264,7 @@ class OmOption(OmInstrument):
         self.theoDelta = round(self.delta * self.size*underlyingPrice*0.01,2)
         self.theoGamma = round(self.gamma * self.size*pow(underlyingPrice, 2) * 0.0001,2)
         self.theoTheta = round(self.theta * self.size/ANNUAL_TRADINGDAYS,2)
-        self.theoVega = round(self.vega * self.size,2)
+        self.theoVega = round(self.vega * self.size*0.01,2)
         self.calculatePosGreeks()
 
     def calculateTheoGreeks(self):
@@ -471,7 +471,6 @@ class OmChain(object):
                 # rateArray.append(self.chainRate)
         self.chainRate=round(sum(rateArray)/len(rateArray),4)
         self.atTheMoneySymbol=self.callDict.values()[minIndex].symbol
-        print rateArray
 
         # 计算每个合约的vega和隐含波动率
         for option in self.optionDict.values():
@@ -673,7 +672,7 @@ class OmPortfolio(object):
             chain.calculatePosGreeks()
         self.calculatePosGreeks()
         end= time.time()
-        # print end-start
+        print end-start
     #----------------------------------------------------------------------
     def newTrade(self, trade):
         """成交推送"""
