@@ -14,6 +14,7 @@ import csv
 import os
 import platform
 from collections import OrderedDict
+from PyQt4.QtCore import Qt
 
 from vnpy.trader.vtFunction import *
 from vnpy.trader.vtGateway import *
@@ -73,12 +74,13 @@ class ChainMonitor(QtWidgets.QTableWidget):
         self.instrumentDict = {}
         self.instrumentDict.update(portfolio.optionDict)
         self.instrumentDict.update(portfolio.underlyingDict)
-        
+
         # 初始化
         self.initUi()
         self.registerEvent()
-        
-    #----------------------------------------------------------------------
+        self.verticalHeader().setDefaultSectionSize(20)
+        self.setShowGrid(True)
+        #----------------------------------------------------------------------
     def initUi(self):
         """初始化界面"""
         portfolio = self.omEngine.portfolio
@@ -109,12 +111,12 @@ class ChainMonitor(QtWidgets.QTableWidget):
         for underlying in portfolio.underlyingDict.values():
             symbol = underlying.symbol
             
-            cellSymbol = OmCell(symbol, COLOR_SYMBOL, COLOR_BLACK, underlying)
-            cellBidPrice = OmCell(str(underlying.bidPrice1), COLOR_BID, COLOR_BLACK, underlying)
-            cellBidVolume = OmCell(str(underlying.bidVolume1), COLOR_BID, COLOR_BLACK, underlying)
-            cellAskPrice = OmCell(str(underlying.askPrice1), COLOR_ASK, COLOR_BLACK, underlying)
-            cellAskVolume = OmCell(str(underlying.askVolume1), COLOR_ASK, COLOR_BLACK, underlying)
-            cellPos = OmCell(str(underlying.netPos), COLOR_POS, COLOR_BLACK, underlying)
+            cellSymbol = OmCell(symbol, COLOR_SYMBOL, COLOR_BLACK, underlying,10)
+            cellBidPrice = OmCell(str(underlying.bidPrice1), COLOR_BID, COLOR_BLACK, underlying,10)
+            cellBidVolume = OmCell(str(underlying.bidVolume1), COLOR_BID, COLOR_BLACK, underlying,10)
+            cellAskPrice = OmCell(str(underlying.askPrice1), COLOR_ASK, COLOR_BLACK, underlying,10)
+            cellAskVolume = OmCell(str(underlying.askVolume1), COLOR_ASK, COLOR_BLACK, underlying,10)
+            cellPos = OmCell(str(underlying.netPos), COLOR_POS, COLOR_BLACK, underlying,10)
             
             self.setItem(row, 0, cellSymbol)
             self.setItem(row, 1, cellBidPrice)
@@ -138,14 +140,14 @@ class ChainMonitor(QtWidgets.QTableWidget):
 
         for option in self.chain.callDict.values():
             # cellSymbol = OmCell(option.symbol, COLOR_SYMBOL, COLOR_BLACK, option)
-            cellSymbol = OmCell(self.mainEngine.getContract(option.vtSymbol).name, COLOR_SYMBOL, COLOR_BLACK, option)
-            cellBidPrice = OmCell(str(option.bidPrice1), COLOR_BID, COLOR_BLACK, option)
-            cellBidVolume = OmCell(str(option.bidVolume1), COLOR_BID, COLOR_BLACK, option)
-            cellBidImpv = OmCell('%.1f' % (option.bidImpv * 100), COLOR_BID, COLOR_BLACK, option)
-            cellAskPrice = OmCell(str(option.askPrice1), COLOR_ASK, COLOR_BLACK, option)
-            cellAskVolume = OmCell(str(option.askVolume1), COLOR_ASK, COLOR_BLACK, option)
-            cellAskImpv = OmCell('%.1f' % (option.askImpv * 100), COLOR_ASK, COLOR_BLACK, option)
-            cellPos = OmCell(str(option.netPos), COLOR_POS, COLOR_BLACK, option)
+            cellSymbol = OmCell(self.mainEngine.getContract(option.vtSymbol).name, COLOR_SYMBOL, COLOR_BLACK, option,10)
+            cellBidPrice = OmCell(str(option.bidPrice1), COLOR_BID, COLOR_BLACK, option,10)
+            cellBidVolume = OmCell(str(option.bidVolume1), COLOR_BID, COLOR_BLACK, option,10)
+            cellBidImpv = OmCell('%.1f' % (option.bidImpv * 100), COLOR_BID, COLOR_BLACK, option,10)
+            cellAskPrice = OmCell(str(option.askPrice1), COLOR_ASK, COLOR_BLACK, option,10)
+            cellAskVolume = OmCell(str(option.askVolume1), COLOR_ASK, COLOR_BLACK, option,10)
+            cellAskImpv = OmCell('%.1f' % (option.askImpv * 100), COLOR_ASK, COLOR_BLACK, option,10)
+            cellPos = OmCell(str(option.netPos), COLOR_POS, COLOR_BLACK, option,10)
             cellStrike = OmCell(str(option.k), COLOR_STRIKE)
             self.setItem(callRow, 0, cellSymbol)
             self.setItem(callRow, 1, cellBidPrice)
@@ -172,14 +174,14 @@ class ChainMonitor(QtWidgets.QTableWidget):
 
         for option in self.chain.putDict.values():
             # cellSymbol = OmCell(option.symbol, COLOR_SYMBOL, COLOR_BLACK, option)
-            cellSymbol = OmCell(self.mainEngine.getContract(option.vtSymbol).name, COLOR_SYMBOL, COLOR_BLACK, option)
-            cellBidPrice = OmCell(str(option.bidPrice1), COLOR_BID, COLOR_BLACK, option)
-            cellBidVolume = OmCell(str(option.bidVolume1), COLOR_BID, COLOR_BLACK, option)
-            cellBidImpv = OmCell('%.1f' % (option.bidImpv * 100), COLOR_BID, COLOR_BLACK, option)
-            cellAskPrice = OmCell(str(option.askPrice1), COLOR_ASK, COLOR_BLACK, option)
-            cellAskVolume = OmCell(str(option.askVolume1), COLOR_ASK, COLOR_BLACK, option)
-            cellAskImpv = OmCell('%.1f' % (option.askImpv * 100), COLOR_ASK, COLOR_BLACK, option)
-            cellPos = OmCell(str(option.netPos), COLOR_POS, COLOR_BLACK, option)
+            cellSymbol = OmCell(self.mainEngine.getContract(option.vtSymbol).name, COLOR_SYMBOL, COLOR_BLACK, option,10)
+            cellBidPrice = OmCell(str(option.bidPrice1), COLOR_BID, COLOR_BLACK, option,10)
+            cellBidVolume = OmCell(str(option.bidVolume1), COLOR_BID, COLOR_BLACK, option,10)
+            cellBidImpv = OmCell('%.1f' % (option.bidImpv * 100), COLOR_BID, COLOR_BLACK, option,10)
+            cellAskPrice = OmCell(str(option.askPrice1), COLOR_ASK, COLOR_BLACK, option,10)
+            cellAskVolume = OmCell(str(option.askVolume1), COLOR_ASK, COLOR_BLACK, option,10)
+            cellAskImpv = OmCell('%.1f' % (option.askImpv * 100), COLOR_ASK, COLOR_BLACK, option,10)
+            cellPos = OmCell(str(option.netPos), COLOR_POS, COLOR_BLACK, option,10)
             self.setItem(putRow, 9, cellPos)
             self.setItem(putRow, 10, cellBidPrice)
             self.setItem(putRow, 11, cellBidVolume)
@@ -611,8 +613,8 @@ class TradingWidget(QtWidgets.QFrame):
                 self.setLayout(vbox)
 
                 # 关联更新
-                buttonSendOrder.clicked.connect(self.slotWarningSendOrder)
-                buttonCancelAll.clicked.connect(self.slotWarningCancelAllOrder)
+                buttonSendOrder.clicked.connect(self.sendOrder)
+                buttonCancelAll.clicked.connect(self.cancelAll)
                 self.lineSymbol.returnPressed.connect(self.updateSymbol)
 
             def slotWarningSendOrder(self):
@@ -852,6 +854,8 @@ class FloatTradingWidget(QtWidgets.QWidget):
         self.setMinimumHeight(500)
         self.setFixedWidth(500)
         self.setWindowTitle(u'委托快捷下单')
+
+        positionDetail=self.getPositionDetail()
         labelTradingWidget = QtWidgets.QLabel(u'期权名称:')
         # labelTradingWidget.setFixedHeight(50)
         labelTickWidget = QtWidgets.QLabel(u'五档行情:')
@@ -940,10 +944,34 @@ class FloatTradingWidget(QtWidgets.QWidget):
         self.quicklineVolume.setMaximum(1000)
         self.quicklineVolume.setMinimum(1)
         grid.addWidget(self.quicklineVolume, 9, 0)
+        labelShortVolumeKey = QtWidgets.QLabel(u'空仓')
+        self.labelShortVolumeValue = QtWidgets.QLabel(str(positionDetail.shortPos))
+        labelShortVolumeKey.setFixedHeight(25)
+        self.labelShortVolumeValue.setFixedHeight(25)
+
+        grid.addWidget(labelShortVolumeKey, 10, 0)
+        grid.addWidget(self.labelShortVolumeValue, 11, 0)
+
+        labelLongVolumeKey = QtWidgets.QLabel(u'多仓')
+        self.labelLongVolumeValue = QtWidgets.QLabel(str(positionDetail.longPos))
+        labelLongVolumeKey.setFixedHeight(25)
+        self.labelLongVolumeValue.setFixedHeight(25)
+        grid.addWidget(labelLongVolumeKey, 12, 0)
+        grid.addWidget(self.labelLongVolumeValue, 13, 0)
+
+        labelNetVolumeKey = QtWidgets.QLabel(u'净仓')
+        self.labelNetVolumeValue = QtWidgets.QLabel(str(positionDetail.longPos-positionDetail.shortPos))
+        labelNetVolumeKey.setFixedHeight(25)
+        self.labelNetVolumeValue.setFixedHeight(25)
+
+        grid.addWidget(labelNetVolumeKey, 14, 0)
+        grid.addWidget(self.labelNetVolumeValue, 15, 0)
+
 
         self.QuickTradeTable = QuickTradeTable(self,self.omEngine, item, item.vtSymbol)
         grid.addWidget(self.QuickTradeTable, 9, 1, 10, 3)
 
+        self.eventEngine.register(EVENT_TRADE + self.symbol, self.processTradeEvent)
         self.setLayout(grid)
 
     # ----------------------------------------------------------------------
@@ -1026,6 +1054,7 @@ class FloatTradingWidget(QtWidgets.QWidget):
     def registerEvent(self,item,symbol):
         """注册事件监听,同时通知页面其他的控件更新"""
         print "同时通知页面其他的控件更新"
+        print symbol
         if symbol == self.symbol:
             print '一样'
             return
@@ -1034,13 +1063,33 @@ class FloatTradingWidget(QtWidgets.QWidget):
             self.lineSymbol.setText(item.symbol)
             self.fiveMarketWidget.registerEvent(item, item.vtSymbol)
             self.QuickTradeTable.registerEvent(item, item.vtSymbol)
+
+            self.eventEngine.unregister(EVENT_TRADE + self.symbol, self.processTradeEvent)
+            self.eventEngine.register(EVENT_TRADE + item.vtSymbol, self.processTradeEvent)
             self.symbol= symbol
 
+            positionDetail = self.getPositionDetail()
+            self.labelShortVolumeValue.setText(str(positionDetail.shortPos))
+            self.labelLongVolumeValue.setText(str(positionDetail.longPos))
+            self.labelNetVolumeValue.setText(str(positionDetail.longPos - positionDetail.shortPos))
+
+
+
+
+    def processTradeEvent(self, event):
+        """成交更新"""
+        trade = event.dict_['data']
+        positionDetail = self.portfolio.instrumentDict[trade.symbol]
+        self.labelShortVolumeValue.setText(str(positionDetail.shortPos))
+        self.labelLongVolumeValue.setText(str(positionDetail.longPos))
+        self.labelNetVolumeValue.setText(str(positionDetail.longPos - positionDetail.shortPos))
 
     def processTickEvent(self, event):
         """行情事件"""
         tick = event.dict_['data']
 
+    def getPositionDetail(self):
+        return self.mainEngine.getPositionDetail(self.symbol)
 # add by lsm 20180104
 class FiveMarketWidget(QtWidgets.QTableWidget):
         """五档行情列表"""
@@ -1086,6 +1135,7 @@ class FiveMarketWidget(QtWidgets.QTableWidget):
             self.setRowCount(10)
 
             self.verticalHeader().setVisible(False)
+
             self.setEditTriggers(self.NoEditTriggers)
 
             for i in range(self.columnCount()):
@@ -1164,16 +1214,15 @@ class FiveMarketWidget(QtWidgets.QTableWidget):
             self.askVolumeDict[3].setText(str(tick.askVolume2))
             self.askVolumeDict[4].setText(str(tick.askVolume1))
 
-
 # add by lsm 20180105
 class QuickTradeTable(QtWidgets.QTableWidget):
     """快捷下单的价格列表，目前显示最新成交价的前后20档价位""",
     headers = [
-        u'委托',
+        u'委 托 量',
         u'买量',
         u'价格',
         u'卖量',
-        u'委托',
+        u'委 托 量',
     ]
 
     # ----------------------------------------------------------------------
@@ -1205,8 +1254,11 @@ class QuickTradeTable(QtWidgets.QTableWidget):
         self.initUi(item)
         self.eventEngine.register(EVENT_TICK + self.vtSymbol, self.processTickEvent)
         self.eventEngine.register(EVENT_ORDER , self.processOrderEvent)
+        self.itemDoubleClicked.connect(self.quickTrade)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.cancelOrder)
 
-    # ----------------------------------------------------------------------
+        # ----------------------------------------------------------------------
     def initUi(self, item):
         """初始化界面"""
         # 初始化表格
@@ -1252,7 +1304,6 @@ class QuickTradeTable(QtWidgets.QTableWidget):
             self.setItem(row + 20, 3, askBid)
 
         self.initOrderCell()
-        self.itemDoubleClicked.connect(self.quickTrade)
 
     def initOrderCell(self):
         #委托量展示
@@ -1304,32 +1355,33 @@ class QuickTradeTable(QtWidgets.QTableWidget):
     def processTickEvent(self, event):
         """行情更新，价格列表,五档数据"""
         tick = event.dict_['data']
-        print "更新行情数据"
         self.changePriceData(tick)
 
     def processOrderEvent(self, event):
         """行情更新,委托列表"""
         tick = event.dict_['data']
         symbol = tick.vtSymbol
-        print "委托更新"
         self.changeOrderData(tick)
 
-    def quickTrade(self):
+    def quickTrade(self,event):
         '''左击事件:快速下单!'''
+        print "左击事件"
+        print self.currentRow()
         longPrice=float(self.cellPriceDict[self.currentRow()].text())
         if self.currentColumn()==0:
-            print longPrice
             self.parentMonitor.sendOrder(DIRECTION_LONG,longPrice)
         elif self.currentColumn()==4:
             self.parentMonitor.sendOrder(DIRECTION_SHORT, longPrice)
+        self.contextMenuEvent
 
-
-
-    def contextMenuEvent(self,event):
-        if self.currentColumn()==0:
+    def cancelOrder(self, event):
+        print "邮件时间??"
+        if self.currentColumn() == 0:
             localIDs = self.cellBidEntrust[self.currentRow()].data
-        elif self.currentColumn()==4:
+        elif self.currentColumn() == 4:
             localIDs = self.cellAskEntrust[self.currentRow()].data
+        else:
+            return
         print localIDs
         print self.cellPriceDict[self.currentRow()].text()
         if localIDs:
@@ -1344,7 +1396,8 @@ class QuickTradeTable(QtWidgets.QTableWidget):
                     req.frontID = order.frontID
                     req.sessionID = order.sessionID
                     req.orderID = order.orderID
-                    print req.symbol,req.exchange,req.frontID,req.sessionID,req.orderID
+                    print '1111111111111'
+                    print req.symbol, req.exchange, req.frontID, req.sessionID, req.orderID
                     self.mainEngine.cancelOrder(req, 'SEC')
                 else:
                     print "没找到"
@@ -1383,7 +1436,6 @@ class QuickTradeTable(QtWidgets.QTableWidget):
             for row in range(0, 40, 1):
                 priceAndVtSymbol = self.cellPriceDict[row].text() + self.vtSymbol
 
-                print priceAndVtSymbol
                 if priceAndVtSymbol in longVolumeDic.keys():
                     self.cellBidEntrust[row].setText(str(longVolumeDic[priceAndVtSymbol]))
                     self.cellBidEntrust[row].data=longLocalIDDic[priceAndVtSymbol]
@@ -1484,12 +1536,12 @@ class ManualTrader(QtWidgets.QWidget):
         hbox = QtWidgets.QHBoxLayout()
         hbox.addLayout(vbox2)
         hbox.addLayout(vbox1)
-        
         vbox3 = QtWidgets.QVBoxLayout()
         vbox3.addWidget(tab)
+        tab.setFixedHeight(500)
+        tab.setMovable(True)
         # vbox3.addWidget(chainMonitor)
         vbox3.addLayout(hbox)
-        
         self.setLayout(vbox3)
 
     def showTradeWidget(self,item):
@@ -1569,7 +1621,7 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
 
         self.initUi()
         self.eventEngine.register(EVENT_TIMER, self.timingCalculate)
-
+        self.setFixedHeight(200)
     def initUi(self):
         """初始化界面"""
         # 初始化表格
@@ -1718,7 +1770,6 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.totalCellTheta.setText(str(self.portfolio.posTheta))
 
 # add by lsm 20180117
-########################################################################
 class PositionMonitor(BasicMonitor):
     """持仓监控"""
 
@@ -1766,7 +1817,6 @@ class PositionMonitor(BasicMonitor):
                 self.removeRow(0)
             self.dataDict.clear()
             self.shouldRefresh=False
-
 
 # add by lsm 20180118
 class AccountTable(QtWidgets.QTableWidget):

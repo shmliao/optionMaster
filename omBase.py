@@ -189,6 +189,7 @@ class OmOption(OmInstrument):
             
         self.expiryDate = contract.expiryDate       # 到期日（字符串）
         self.t = getTimeToMaturity(self.expiryDate) # 剩余时间
+        self.originT=self.t
         # 波动率属性
         self.bidImpv = EMPTY_FLOAT
         self.askImpv = EMPTY_FLOAT
@@ -469,11 +470,16 @@ class OmChain(object):
             except Exception:
                 pass
                 # rateArray.append(self.chainRate)
-        self.chainRate=round(sum(rateArray)/len(rateArray),4)
+        try:
+            self.chainRate=round(sum(rateArray)/len(rateArray),4)
+        except Exception:
+            self.chainRate=0
         self.atTheMoneySymbol=self.callDict.values()[minIndex].symbol
 
         # 计算每个合约的vega和隐含波动率
+        nowTime = time.time()
         for option in self.optionDict.values():
+            option.t=option.originT-self.calculateDueTime(nowTime)
             option.r =self.chainRate
             option.calculateOptionImpv()
             option.calculateTheoVega()
@@ -584,6 +590,22 @@ class OmChain(object):
         self.posTheta = self.posTheta - oldPosTheta + option.posTheta
         self.posVega = self.posVega - oldPosVega + option.posVega
 
+    def calculateDueTime(self,nowTime):
+        hours = time.localtime(nowTime)[3]
+        minutes = time.localtime(nowTime)[4]
+        pastMinute = hours * 60 + minutes
+        adjustmentTime = 0.0
+        if pastMinute < 570:
+            adjustmentTime = 0
+        elif 570 <= pastMinute and pastMinute < 690:
+            adjustmentTime = (pastMinute - 570) / 240.0 / ANNUAL_TRADINGDAYS
+        elif 690 <= pastMinute and pastMinute < 780:
+            adjustmentTime = 0.5 / ANNUAL_TRADINGDAYS
+        elif 780 <= pastMinute and pastMinute < 900:
+            adjustmentTime = (pastMinute - 780) / 240 / ANNUAL_TRADINGDAYS+ 0.5 / ANNUAL_TRADINGDAYS
+        else:
+            adjustmentTime = 1.0 / ANNUAL_TRADINGDAYS
+        return adjustmentTime
 
 ########################################################################
 class OmPortfolio(object):
@@ -672,7 +694,7 @@ class OmPortfolio(object):
             chain.calculatePosGreeks()
         self.calculatePosGreeks()
         end= time.time()
-        print end-start
+        # print end-start
     #----------------------------------------------------------------------
     def newTrade(self, trade):
         """成交推送"""

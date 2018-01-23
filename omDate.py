@@ -14,7 +14,7 @@ from vnpy.trader.uiQt import QtCore, QtWidgets, QtGui
 
 
 # 常量定义
-ANNUAL_TRADINGDAYS = 260
+ANNUAL_TRADINGDAYS = 250.0
 
 CALENDAR_FILENAME = 'TradingCalendar.csv'
 PATH = os.path.abspath(os.path.dirname(__file__))
@@ -234,7 +234,10 @@ def getTimeToMaturity(expiryDate):
 
     tradingDays = 0
     for d in CALENDAR:
-        dt = datetime.datetime.strptime(d['date'], '%Y-%m-%d').date()
+        try:
+            dt = datetime.datetime.strptime(d['date'], '%Y/%m/%d').date()
+        except:
+            dt = datetime.datetime.strptime(d['date'], '%Y-%m-%d').date()
         # 判断是否为交易日的条件：
         # 1. 日期大于等于今日
         # 2. 日期小于等于到期日

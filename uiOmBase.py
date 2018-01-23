@@ -26,7 +26,7 @@ class OmCell(QtWidgets.QTableWidgetItem):
     """单元格"""
 
     #----------------------------------------------------------------------
-    def __init__(self, text=None, background=None, foreground=None, data=None):
+    def __init__(self, text=None, background=None, foreground=None, data=None,fontSize=None):
         """Constructor"""
         super(OmCell, self).__init__()
         self.data = data
@@ -40,5 +40,7 @@ class OmCell(QtWidgets.QTableWidgetItem):
         if background:
             self.setBackground(background)
             self.background = background
-        
+        if fontSize:
+            self.setFont(QtGui.QFont("Roman times", fontSize))
+
         self.setTextAlignment(QtCore.Qt.AlignCenter)
