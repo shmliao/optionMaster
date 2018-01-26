@@ -241,7 +241,7 @@ def getTimeToMaturity(expiryDate):
         # 判断是否为交易日的条件：
         # 1. 日期大于等于今日
         # 2. 日期小于等于到期日
-        # 3. 日期没有描述（假期）        
+        # 3. 日期没有描述（假期）
         if dt>=todayDt and dt<=expiryDt and not d['description']:
             tradingDays += 1
     

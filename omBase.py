@@ -222,6 +222,9 @@ class OmOption(OmInstrument):
         self.theta = EMPTY_FLOAT
         self.vega = EMPTY_FLOAT
 
+        #如果是call，买远期价格，如果是put，卖远期价格
+        self.futurePrice=EMPTY_FLOAT
+
         # 期权链
         self.chain = None
     #----------------------------------------------------------------------
@@ -254,7 +257,7 @@ class OmOption(OmInstrument):
         if not underlyingPrice:
             return
 
-        self.theoPrice, self.delta, self.gamma, self.theta = self.calculateGreeks(underlyingPrice,
+        self.delta, self.gamma, self.theta ,self.dgammaDS,self.dvegaDS,self.vomma,self.vonna= self.calculateGreeks(underlyingPrice,
                                                                                   self.k,
                                                                                   self.r,
                                                                                   self.t,
@@ -262,10 +265,20 @@ class OmOption(OmInstrument):
                                                                                   self.cp)
         # delta f * 0.01
         # vega * 0.01
-        self.theoDelta = round(self.delta * self.size*underlyingPrice*0.01,2)
-        self.theoGamma = round(self.gamma * self.size*pow(underlyingPrice, 2) * 0.0001,2)
-        self.theoTheta = round(self.theta * self.size/ANNUAL_TRADINGDAYS,2)
-        self.theoVega = round(self.vega * self.size*0.01,2)
+        self.theoDelta = self.delta * self.size*underlyingPrice*0.01
+        self.theoGamma = self.gamma * self.size*pow(underlyingPrice, 2) * 0.0001
+        self.theoTheta = self.theta * self.size/ANNUAL_TRADINGDAYS
+        self.theoVega = self.vega * self.size*0.01
+
+        # self.theoDgammaDS = self.dgammaDS * self.size * underlyingPrice * 0.01*pow(underlyingPrice, 2) * 0.0001
+        # self.theoDvegaDS= self.dvegaDS * self.size * underlyingPrice * 0.01*0.01
+        # self.theoVomma = self.vomma * self.size *0.01*pow(underlyingPrice, 2) * 0.0001
+        # self.theoVonna = self.vonna * self.size *0.01*0.01
+
+        self.theoDgammaDS = self.dgammaDS * self.size
+        self.theoDvegaDS= self.dvegaDS * self.size
+        self.theoVomma = self.vomma * self.size
+        self.theoVonna = self.vonna * self.size
         self.calculatePosGreeks()
 
     def calculateTheoGreeks(self):
@@ -291,17 +304,26 @@ class OmOption(OmInstrument):
     #----------------------------------------------------------------------
     def calculatePosGreeks(self):
         """计算持仓希腊值"""
-        self.posValue = self.theoPrice * self.netPos * self.size
+        # self.posValue = self.theoPrice * self.netPos * self.size
 
-        self.posDelta = round(self.theoDelta * self.netPos,2)
-        self.posGamma = round(self.theoGamma * self.netPos,2)
-        self.posTheta = round(self.theoTheta * self.netPos,2)
-        self.posVega = round(self.theoVega * self.netPos,2)
+        self.posDelta = int(self.theoDelta * self.netPos)
+        self.posGamma = int(self.theoGamma * self.netPos)
+        self.posTheta = int(self.theoTheta * self.netPos)
+        self.posVega = int(self.theoVega * self.netPos)
+
+        self.posDgammaDS = int(self.theoDgammaDS * self.netPos)
+        self.posDvegaDS = int(self.theoDvegaDS * self.netPos)
+        self.posVomma = int(self.theoVomma * self.netPos)
+        self.posVonna = int(self.theoVonna * self.netPos)
 
     #----------------------------------------------------------------------
     def newTick(self, tick):
         """行情更新"""
         super(OmOption, self).newTick(tick)
+        if self.cp == CALL:
+            self.futurePrice=self.k+tick.askPrice1-self.chain.relativeOption[self.symbol].bidPrice1
+        else:
+            self.futurePrice = self.k + self.chain.relativeOption[self.symbol].bidPrice1-tick.askPrice1
         # self.r=self.chain.calculateChainRate()
         # self.calculateOptionImpv()
     
@@ -401,7 +423,11 @@ class OmChain(object):
         self.posGamma = 0
         self.posTheta = 0
         self.posVega = 0
-        
+
+        self.posDgammaDS = 0
+        self.posDvegaDS = 0
+        self.posVomma = 0
+        self.posVonna = 0
         # 遍历汇总
         for option in self.optionDict.values():
             self.longPos += option.longPos
@@ -412,6 +438,11 @@ class OmChain(object):
             self.posGamma += option.posGamma
             self.posTheta += option.posTheta
             self.posVega += option.posVega
+
+            self.posDgammaDS += option.posDgammaDS
+            self.posDvegaDS += option.posDvegaDS
+            self.posVomma += option.posVomma
+            self.posVonna += option.posVonna
 
         
         self.netPos = self.longPos - self.shortPos    
@@ -517,8 +548,7 @@ class OmChain(object):
             self.skew = round(100 * self.putDict.values()[index2].midImpv / self.callDict.values()[index1].midImpv, 2)
         except Exception:
             self.skew = 100
-
-
+        print "算完了"
 
     def calculateChainRate2(self):
         """计算利率，选择平值期权的前后两档，五档行情的利率平均值作为最终的利率"""
@@ -645,6 +675,11 @@ class OmPortfolio(object):
         self.posGamma = EMPTY_FLOAT
         self.posTheta = EMPTY_FLOAT
         self.posVega = EMPTY_FLOAT
+
+        self.posDgammaDS = EMPTY_FLOAT
+        self.posDvegaDS = EMPTY_FLOAT
+        self.posVomma = EMPTY_FLOAT
+        self.posVonna = EMPTY_FLOAT
         """启动连续计算波动率和持仓统计"""
         self.eventEngine.register(EVENT_TIMER, self.timingCalculate)
     #----------------------------------------------------------------------
@@ -659,6 +694,11 @@ class OmPortfolio(object):
         self.posGamma = 0
         self.posTheta = 0
         self.posVega = 0
+
+        self.posDgammaDS =0
+        self.posDvegaDS =0
+        self.posVomma =0
+        self.posVonna =0
         
         for underlying in self.underlyingDict.values():
             self.posDelta += underlying.posDelta
@@ -672,6 +712,11 @@ class OmPortfolio(object):
             self.posGamma += chain.posGamma
             self.posTheta += chain.posTheta
             self.posVega += chain.posVega
+
+            self.posDgammaDS += chain.posDgammaDS
+            self.posDvegaDS += chain.posDvegaDS
+            self.posVomma += chain.posVomma
+            self.posVonna += chain.posVonna
         
         self.netPos = self.longPos - self.shortPos        
     
@@ -694,7 +739,7 @@ class OmPortfolio(object):
             chain.calculatePosGreeks()
         self.calculatePosGreeks()
         end= time.time()
-        # print end-start
+        print end-start
     #----------------------------------------------------------------------
     def newTrade(self, trade):
         """成交推送"""
