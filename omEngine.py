@@ -83,7 +83,12 @@ class OmEngine(object):
         req.exchange = contract.exchange
 
 
-        self.mainEngine.subscribe(req, contract.gatewayName)
+
+        gateway = self.mainEngine.getGateway(contract.gatewayName)
+        if gateway.mdConnected:
+            self.mainEngine.subscribe(req, contract.gatewayName)
+        else:
+            self.mainEngine.subscribe(req, 'CSHSHLP')
 
 
         # 订阅事件
@@ -98,6 +103,7 @@ class OmEngine(object):
         
         f = file(fileName)
         setting = json.load(f)
+
 
         # 读取定价模型
         model = MODEL_DICT.get(setting['model'], None)
@@ -115,15 +121,25 @@ class OmEngine(object):
                 continue
             
             detail = self.mainEngine.getPositionDetail(contract.vtSymbol)
-            
             underlying = OmUnderlying(contract, detail)
             underlyingDict[underlyingSymbol] = underlying
 
 
         # 创建期权链对象并初始化
         chainList = []
+        futureList=[]
         for d in setting['chain']:
             chainSymbol = d['chainSymbol']
+            futureSymbol=d['futureSymbol']
+            #查找对应的期货合约
+            futureContact = self.mainEngine.getContract(futureSymbol)
+            if not futureContact:
+                self.writeLog(u'找不到期货合约%s' % futureSymbol)
+                return
+
+            detail = self.mainEngine.getPositionDetail(futureContact.vtSymbol)
+            future = OmUnderlying(futureContact, detail)
+            futureList.append(future)
 
             # 利率
             r = d['r']
@@ -156,15 +172,15 @@ class OmEngine(object):
             
             # 创建期权链
 
-            chain = OmChain(underlying,chainSymbol, callList, putList)
+            chain = OmChain(underlying,chainSymbol, callList, putList,future)
             chainList.append(chain)
-            
+
             # 添加标的映射关系
 
             underlying.addChain(chain)
 
         # 创建持仓组合对象并初始化
-        self.portfolio = OmPortfolio(self.eventEngine,setting['name'], model, underlyingDict.values(), chainList)
+        self.portfolio = OmPortfolio(self.eventEngine,setting['name'], model, underlyingDict.values(), chainList,futureList)
         
         # 载入波动率配置
         self.loadImpvSetting()
@@ -172,9 +188,11 @@ class OmEngine(object):
         # 订阅行情和事件
 
         for underlying in underlyingDict.values():
+            print "1111111111"+underlying.vtSymbol
             self.subscribeEvent(underlying.vtSymbol)
 
         for chain in chainList:
+            self.subscribeEvent(chain.future.vtSymbol)
             for option in chain.optionDict.values():
                 self.subscribeEvent(option.vtSymbol)
         

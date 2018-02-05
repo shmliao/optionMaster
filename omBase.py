@@ -61,7 +61,7 @@ class OmInstrument(VtTickData):
             self.upperLimit = tick.upperLimit
             self.lowerLimit = tick.lowerLimit
             self.tickInited = True
-            
+
         self.lastPrice = tick.lastPrice
         self.volume = tick.volume
         self.openInterest = tick.openInterest
@@ -227,6 +227,17 @@ class OmOption(OmInstrument):
 
         # 期权链
         self.chain = None
+
+        self.dgammaDS=EMPTY_FLOAT
+        self.dvegaDS=EMPTY_FLOAT
+        self.vomma=EMPTY_FLOAT
+        self.vonna=EMPTY_FLOAT
+
+        self.posDgammaDS = EMPTY_FLOAT
+        self.posDvegaDS = EMPTY_FLOAT
+        self.posVomma = EMPTY_FLOAT
+        self.posVonna = EMPTY_FLOAT
+
     #----------------------------------------------------------------------
     def calculateOptionImpv(self):
         """计算隐含波动率"""
@@ -245,12 +256,12 @@ class OmOption(OmInstrument):
         self.midImpv = (self.askImpv + self.bidImpv) / 2
     
     #----------------------------------------------------------------------
-    def calculateTheoVega(self):
+    def calculateTheoVega(self,atTheMoneyOptionImv):
         underlyingPrice = self.underlying.midPrice
         if not underlyingPrice:
             return
 
-        self.vega = self.calculateVega(underlyingPrice,self.k, self.r,self.t,self.midImpv,self.cp)
+        self.vega = self.calculateVega(underlyingPrice,self.k, self.r,self.t,atTheMoneyOptionImv,self.cp)
 
     def calculateTheoGreeksAndPosGreeks(self,callorPutImpv):
         underlyingPrice = self.underlying.midPrice
@@ -352,7 +363,7 @@ class OmChain(object):
     """期权链"""
 
     #----------------------------------------------------------------------
-    def __init__(self,underlying,symbol, callList, putList):
+    def __init__(self,underlying,symbol, callList, putList,future):
         """Constructor"""
         self.symbol = symbol
         
@@ -360,7 +371,7 @@ class OmChain(object):
         self.callDict = OrderedDict()
         self.putDict = OrderedDict()
         self.optionDict = OrderedDict()
-
+        self.future=future
 
         self.underlying=underlying
 
@@ -411,6 +422,11 @@ class OmChain(object):
         self.posGamma = EMPTY_FLOAT
         self.posTheta = EMPTY_FLOAT
         self.posVega = EMPTY_FLOAT
+
+        self.posDgammaDS = EMPTY_FLOAT
+        self.posDvegaDS = EMPTY_FLOAT
+        self.posVomma = EMPTY_FLOAT
+        self.posVonna = EMPTY_FLOAT
     
     #----------------------------------------------------------------------
     def calculatePosGreeks(self):
@@ -484,7 +500,7 @@ class OmChain(object):
 
     def calculateChainRate(self):
         """计算利率，选择平值期权的前后两档，五档行情的利率平均值作为最终的利率"""
-        """首先计算利率，然后用这个利率算每个月份的call和put的波动率和vega，利用vega算权重，取每个执行价的虚值期权波动率作为每个月份的隐含波动率，算出chain的综合波动率,再算其他的希腊值"""
+        """首先计算利率，然后用这个利率算每个月份的call和put的波动率和vega(波动率用平值期权的波动率)，利用vega算权重，取每个执行价的虚值期权波动率作为每个月份的隐含波动率，算出chain的综合波动率,再算其他的希腊值"""
         s=self.underlying.midPrice
         k=[abs(callOption.k-s) for callOption in self.callDict.values()]
         k=[abs(callOption.k-s) for callOption in self.callDict.values()]
@@ -493,10 +509,10 @@ class OmChain(object):
         atTheMoneyKPrice=self.putDict.values()[minIndex].k
         for index in range(-2+minIndex,3+minIndex,1):
             try:
-                callPrice = self.callDict.values()[index].lastPrice
-                putPrice=self.putDict.values()[index].lastPrice
+                callPrice = self.callDict.values()[index].midPrice
+                putPrice=self.putDict.values()[index].midPrice
                 f = callPrice - putPrice+ self.putDict.values()[index].k
-                r = log(f / self.underlying.lastPrice) / self.putDict.values()[index].t
+                r = log(f / self.underlying.midPrice) / self.putDict.values()[index].t
                 rateArray.append(r)
             except Exception:
                 pass
@@ -507,13 +523,22 @@ class OmChain(object):
             self.chainRate=0
         self.atTheMoneySymbol=self.callDict.values()[minIndex].symbol
 
-        # 计算每个合约的vega和隐含波动率
+        #计算平值期权的impv，用来计算每个期权的vega,vega加权!
         nowTime = time.time()
+        atTheMoneyOption=self.callDict.values()[minIndex]
+        atTheMoneyOption.t = atTheMoneyOption.originT - self.calculateDueTime(nowTime)
+        atTheMoneyOption.r = self.chainRate
+        atTheMoneyOption.calculateOptionImpv()
+        atTheMoneyOptionImv=atTheMoneyOption.midImpv
+        # 计算每个合约的vega和隐含波动率
+
         for option in self.optionDict.values():
             option.t=option.originT-self.calculateDueTime(nowTime)
             option.r =self.chainRate
+            if not option.midPrice and not option.lastPrice:
+                continue
             option.calculateOptionImpv()
-            option.calculateTheoVega()
+            option.calculateTheoVega(atTheMoneyOptionImv)
         try:
             #计算凸度
             self.convexity=round((self.callDict.values()[index-1].midImpv+self.putDict.values()[index+1].midImpv)/(self.callDict.values()[index].midImpv+self.putDict.values()[index].midImpv)*100.0,2)
@@ -522,7 +547,8 @@ class OmChain(object):
             
         # 取每个执行价的虚值期权波动率作为每个合约的综合波动率,取每个执行价的虚值期权vega作为每个合约的综合vega
         # comprehensiveImpv= [self.outOfTheMoneyImpv(atTheMoneyKPrice,callOption)  for callOption in self.callDict.values()]
-        comprehensiveVega=[self.outOfTheMoneyVega(atTheMoneyKPrice,callOption)  for callOption in self.callDict.values()]
+        # comprehensiveVega=[self.outOfTheMoneyVega(atTheMoneyKPrice,callOption)  for callOption in self.callDict.values()]
+        comprehensiveVega = [callOption.vega for callOption in self.callDict.values()]
         totalVega=sum(comprehensiveVega)
 
         try:
@@ -531,7 +557,7 @@ class OmChain(object):
             return
 
         self.callImpv=sum([vega*impv for vega, impv in zip(weightVega,[callOption.midImpv for callOption in self.callDict.values()])])
-        self.putImpv=sum([vega*impv for vega, impv in zip(weightVega,[callOption.midImpv for callOption in self.putDict.values()])])
+        self.putImpv=sum([vega*impv for vega, impv in zip(weightVega,[putOption.midImpv for putOption in self.putDict.values()])])
 
         self.callImpv=round(self.callImpv,4)
         self.putImpv = round(self.putImpv, 4)
@@ -548,7 +574,6 @@ class OmChain(object):
             self.skew = round(100 * self.putDict.values()[index2].midImpv / self.callDict.values()[index1].midImpv, 2)
         except Exception:
             self.skew = 100
-        print "算完了"
 
     def calculateChainRate2(self):
         """计算利率，选择平值期权的前后两档，五档行情的利率平均值作为最终的利率"""
@@ -642,18 +667,23 @@ class OmPortfolio(object):
     """持仓组合"""
 
     #----------------------------------------------------------------------
-    def __init__(self,eventEngine, name, model, underlyingList, chainList):
+    def __init__(self,eventEngine, name, model, underlyingList, chainList,futureList):
         """Constructor"""
         self.name = name
         self.model = model
         self.eventEngine=eventEngine
+        self.futureList=futureList
 
         # 原始容器
         self.underlyingDict = OrderedDict()
         self.chainDict = OrderedDict()
+        self.futureDict= OrderedDict()
         self.optionDict = {}
         self.instrumentDict = {}
-        
+
+        for future in futureList:
+            self.futureDict[future.symbol] = future
+
         for underlying in underlyingList:
             self.underlyingDict[underlying.symbol] = underlying
             
@@ -730,6 +760,10 @@ class OmPortfolio(object):
         elif symbol in self.underlyingDict:
             underlying = self.underlyingDict[symbol]
             underlying.newTick(tick)
+        elif symbol in self.futureDict:
+            future = self.futureDict[symbol]
+            future.newTick(tick)
+
 
     def timingCalculate(self,event):
         """定时计算希腊字母和波动率，不实时更新的是因为数据是一条一条返回过来的，比如服务器可能在0.5秒内就返回10多组数据给我，无法实时更新"""

@@ -27,12 +27,44 @@ class VolatilityChart(pg.GraphicsWindow):
         self.bidCurveDict = {}
         self.askCurveDict = {}
         self.pricingCurveDict = {}
+
+        self.colorArray={0:"r",
+                         1: "b",
+                         2: "g",
+                         3: "w"
+                         }
+
+
+        self.impvCurveDict = {}
         
         self.initUi()
         self.registerEvent()
-    
-    #----------------------------------------------------------------------
+
+        self.setFixedHeight(500)
+        self.setFixedWidth(600)
+
+    # ----------------------------------------------------------------------
     def initUi(self):
+        """初始化界面"""
+        portfolio = self.portfolio
+
+        self.setWindowTitle(u'波动率图表')
+
+        pg.setConfigOptions(antialias=True)  # 启用抗锯齿
+
+        # 创建绘图区以及线
+        chart = self.addPlot(title=u'波动率汇总')
+        for row,chain in enumerate(portfolio.chainDict.values()):
+            symbol = chain.symbol
+
+            chart.showGrid(x=True, y=True)
+            chart.setLabel('left', u'波动率')  # 设置左边标签
+            chart.setLabel('bottom', u'行权价')  # 设置底部标签
+            chart.addLegend(offset=(400, 50*row+5))
+            self.impvCurveDict[symbol] = chart.plot(pen=self.colorArray[row], symbol='t', symbolSize=8, symbolBrush=self.colorArray[row], name=symbol)
+
+    #----------------------------------------------------------------------
+    def initUi2(self):
         """初始化界面"""
         portfolio = self.portfolio
         
@@ -48,10 +80,12 @@ class VolatilityChart(pg.GraphicsWindow):
             chart.showGrid(x=True, y=True) 
             chart.setLabel('left', u'波动率')          #设置左边标签
             chart.setLabel('bottom', u'行权价')        #设置底部标签                
-
-            self.bidCurveDict[symbol] = chart.plot(pen='r', symbol='t', symbolSize=8, symbolBrush='r')
-            self.askCurveDict[symbol] = chart.plot(pen='g', symbolSize=8, symbolBrush='g')
-            self.pricingCurveDict[symbol] = chart.plot(pen='w', symbol = 's', symbolSize=8, symbolBrush='w')
+            print chart
+            chart.addLegend()
+            # pg.graphicsItems.PlotItem.PlotItem.PlotItem
+            self.bidCurveDict[symbol] = chart.plot(pen='r', symbol='t', symbolSize=8, symbolBrush='r',name='bid')
+            self.askCurveDict[symbol] = chart.plot(pen='g', symbolSize=8, symbolBrush='g',name='ask')
+            self.pricingCurveDict[symbol] = chart.plot(pen='w', symbol = 's', symbolSize=8, symbolBrush='w',name='price')
         
         self.nextRow()
         
@@ -80,9 +114,25 @@ class VolatilityChart(pg.GraphicsWindow):
         if self.updateCount >= self.updateTrigger:
             self.updateCount = 0
             self.updateChart()
-        
-    #----------------------------------------------------------------------
+
+    # ----------------------------------------------------------------------
     def updateChart(self):
+        """更新图表"""
+        for chain in self.portfolio.chainDict.values():
+            strikeData = [option.k for option in chain.callDict.values()]
+
+            symbol = chain.symbol
+            impvData = []
+            for option in chain.callDict.values():
+                if option.midPrice<chain.relativeOption[option.symbol].midPrice:
+                    impvData.append(option.midImpv * 100)
+                else:
+                    impvData.append(chain.relativeOption[option.symbol].midImpv * 100)
+
+            self.impvCurveDict[symbol].setData(y=impvData, x=strikeData)
+
+    #----------------------------------------------------------------------
+    def updateChart2(self):
         """更新图表"""
         for chain in self.portfolio.chainDict.values():
             strikeData = [option.k for option in chain.callDict.values()]
@@ -105,16 +155,16 @@ class VolatilityChart(pg.GraphicsWindow):
             
             # 看跌
             symbol = chain.symbol + PUT_SUFFIX
-            
+
             bidImpvData = []
             askImpvData = []
             pricingImpvData = []
-            
+
             for option in chain.putDict.values():
                 bidImpvData.append(option.bidImpv*100)
                 askImpvData.append(option.askImpv*100)
                 pricingImpvData.append(option.pricingImpv*100)
-            
+
             self.bidCurveDict[symbol].setData(y=bidImpvData, x=strikeData)
             self.askCurveDict[symbol].setData(y=askImpvData, x=strikeData)
             self.pricingCurveDict[symbol].setData(y=pricingImpvData, x=strikeData)
