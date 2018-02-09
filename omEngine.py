@@ -188,7 +188,6 @@ class OmEngine(object):
         # 订阅行情和事件
 
         for underlying in underlyingDict.values():
-            print "1111111111"+underlying.vtSymbol
             self.subscribeEvent(underlying.vtSymbol)
 
         for chain in chainList:

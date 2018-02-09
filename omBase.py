@@ -139,6 +139,11 @@ class OmUnderlying(OmInstrument):
         # 希腊值
         self.theoDelta = EMPTY_FLOAT    # 理论delta值
         self.posDelta = EMPTY_FLOAT     # 持仓delta值
+
+        self.callVolume=EMPTY_FLOAT
+        self.putVolume = EMPTY_FLOAT
+        self.callPostion = EMPTY_FLOAT
+        self.putPostion = EMPTY_FLOAT
         
     #----------------------------------------------------------------------
     def addChain(self, chain):
@@ -246,10 +251,15 @@ class OmOption(OmInstrument):
         if not underlyingPrice:
             return
 
-        self.askImpv = self.calculateImpv(self.askPrice1, underlyingPrice, self.k,
+        askImpv = self.calculateImpv(self.askPrice1, underlyingPrice, self.k,
                                           self.r, self.t, self.cp)
-        self.bidImpv = self.calculateImpv(self.bidPrice1, underlyingPrice, self.k,
+        bidImpv = self.calculateImpv(self.bidPrice1, underlyingPrice, self.k,
                                           self.r, self.t, self.cp)
+
+        if askImpv>0:
+            self.askImpv=askImpv
+        if bidImpv:
+            self.bidImpv = bidImpv
 
         # self.midImpv = self.calculateImpv(self.midPrice, underlyingPrice, self.k,
         #                                   self.r, self.t, self.cp)
@@ -287,7 +297,7 @@ class OmOption(OmInstrument):
         # self.theoVonna = self.vonna * self.size *0.01*0.01
 
         self.theoDgammaDS = self.dgammaDS * self.size
-        self.theoDvegaDS= self.dvegaDS * self.size
+        self.theoDvegaDS= self.dvegaDS * self.size*underlyingPrice/10000
         self.theoVomma = self.vomma * self.size
         self.theoVonna = self.vonna * self.size
         self.calculatePosGreeks()
@@ -427,6 +437,11 @@ class OmChain(object):
         self.posDvegaDS = EMPTY_FLOAT
         self.posVomma = EMPTY_FLOAT
         self.posVonna = EMPTY_FLOAT
+
+        self.callVolume=EMPTY_FLOAT
+        self.putVolume = EMPTY_FLOAT
+        self.callPostion = EMPTY_FLOAT
+        self.putPostion = EMPTY_FLOAT
     
     #----------------------------------------------------------------------
     def calculatePosGreeks(self):
@@ -444,8 +459,16 @@ class OmChain(object):
         self.posDvegaDS = 0
         self.posVomma = 0
         self.posVonna = 0
+
+        self.volume = 0
+        self.openInterest = 0
+
+        self.callVolume = 0
+        self.callPostion = 0
+        self.putVolume = 0
+        self.putPostion = 0
         # 遍历汇总
-        for option in self.optionDict.values():
+        for option in self.callDict.values():
             self.longPos += option.longPos
             self.shortPos += option.shortPos
             
@@ -460,7 +483,27 @@ class OmChain(object):
             self.posVomma += option.posVomma
             self.posVonna += option.posVonna
 
-        
+            self.callVolume += option.volume
+            self.callPostion += option.openInterest
+
+        for option in self.putDict.values():
+            self.longPos += option.longPos
+            self.shortPos += option.shortPos
+
+            self.posValue += option.posValue
+            self.posDelta += option.posDelta
+            self.posGamma += option.posGamma
+            self.posTheta += option.posTheta
+            self.posVega += option.posVega
+
+            self.posDgammaDS += option.posDgammaDS
+            self.posDvegaDS += option.posDvegaDS
+            self.posVomma += option.posVomma
+            self.posVonna += option.posVonna
+
+            self.putVolume += option.volume
+            self.putPostion += option.openInterest
+
         self.netPos = self.longPos - self.shortPos    
     
     #----------------------------------------------------------------------
@@ -729,6 +772,11 @@ class OmPortfolio(object):
         self.posDvegaDS =0
         self.posVomma =0
         self.posVonna =0
+
+        self.callVolume = 0
+        self.putVolume = 0
+        self.callPostion = 0
+        self.putPostion = 0
         
         for underlying in self.underlyingDict.values():
             self.posDelta += underlying.posDelta
@@ -747,6 +795,11 @@ class OmPortfolio(object):
             self.posDvegaDS += chain.posDvegaDS
             self.posVomma += chain.posVomma
             self.posVonna += chain.posVonna
+
+            self.callVolume += chain.callVolume
+            self.putVolume += chain.putVolume
+            self.callPostion += chain.callPostion
+            self.putPostion += chain.putPostion
         
         self.netPos = self.longPos - self.shortPos        
     
