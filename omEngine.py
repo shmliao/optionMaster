@@ -88,10 +88,15 @@ class OmEngine(object):
         if gateway.mdConnected:
             self.mainEngine.subscribe(req, contract.gatewayName)
         else:
+            self.mainEngine.subscribe(req, 'SEC')
             self.mainEngine.subscribe(req, 'CSHSHLP')
 
 
         # 订阅事件
+        if  req.symbol=='510050':
+            #做这个处理是因为，中信接口没有行情接口，需要用其他的接口获取行情，但是有时候会出现vtSymbol对应不上的情况
+            self.eventEngine.register(EVENT_TICK + req.symbol, self.processTickEvent)
+            vtSymbol='510050.SSE'
         self.eventEngine.register(EVENT_TICK + vtSymbol, self.processTickEvent)
         self.eventEngine.register(EVENT_TRADE + vtSymbol, self.processTradeEvent)
     
@@ -160,16 +165,23 @@ class OmEngine(object):
                     detail = self.mainEngine.getPositionDetail(contract.vtSymbol)
                     option = OmOption(contract, detail, underlying, model, r)
                     if contract.optionType is OPTION_CALL:
-                        callDict[option.k] = option
+                        if option.k in callDict:
+                            callDict[option.k+0.0001]=option
+                        else:
+                            callDict[option.k] = option
+
                     else:
-                        putDict[option.k] = option
+                        if option.k in putDict:
+                            putDict[option.k+0.0001] = option
+                        else:
+                            putDict[option.k] = option
 
             # 期权排序
             strikeList = callDict.keys()
             strikeList.sort()
             callList = [callDict[k] for k in strikeList]
             putList = [putDict[k] for k in strikeList]
-            
+
             # 创建期权链
 
             chain = OmChain(underlying,chainSymbol, callList, putList,future)
@@ -180,7 +192,7 @@ class OmEngine(object):
             underlying.addChain(chain)
 
         # 创建持仓组合对象并初始化
-        self.portfolio = OmPortfolio(self.eventEngine,setting['name'], model, underlyingDict.values(), chainList,futureList)
+        self.portfolio = OmPortfolio(self.mainEngine,self.eventEngine,setting['name'], model, underlyingDict.values(), chainList,futureList)
         
         # 载入波动率配置
         self.loadImpvSetting()
@@ -188,11 +200,10 @@ class OmEngine(object):
         # 订阅行情和事件
 
         for underlying in underlyingDict.values():
-            print "1111111111"+underlying.vtSymbol
             self.subscribeEvent(underlying.vtSymbol)
 
         for chain in chainList:
-            self.subscribeEvent(chain.future.vtSymbol)
+            # self.subscribeEvent(chain.future.vtSymbol)
             for option in chain.optionDict.values():
                 self.subscribeEvent(option.vtSymbol)
         

@@ -25,6 +25,7 @@ from vnpy.trader.vtConstant import *
 from vnpy.trader.uiQt import QtGui, QtWidgets, QtCore, BASIC_FONT
 from PyQt4.QtGui import QAbstractItemView
 from math import (log, pow, sqrt, exp)
+from uiOmBookVolatility import BookVolatility
 
 
 # Add by lsm 20180125
@@ -93,6 +94,7 @@ class NewChainMonitor(QtWidgets.QTableWidget):
 
         self.posDict = {}
         self.futureDic = {}
+        self.optionPriceFormat={}
         self.headerSelectWidget = headerSelectWidget
         # add by me
         self.chain = chain
@@ -140,7 +142,8 @@ class NewChainMonitor(QtWidgets.QTableWidget):
 
         for underlying in portfolio.underlyingDict.values():
             symbol = underlying.symbol
-
+            priceFormat="%"+"."+str(underlying.remainDecimalPlaces)+"f"
+            self.optionPriceFormat[symbol] = priceFormat
             cellSymbol = OmCell(symbol, COLOR_SYMBOL, COLOR_BLACK, underlying, 10)
             cellBidPrice = OmCell(str(underlying.bidPrice1), COLOR_BID, COLOR_BLACK, underlying, 10)
             cellBidVolume = OmCell(str(underlying.bidVolume1), COLOR_BID, COLOR_BLACK, underlying, 10)
@@ -172,12 +175,14 @@ class NewChainMonitor(QtWidgets.QTableWidget):
 
         for option in self.chain.callDict.values():
             # cellSymbol = OmCell(option.symbol, COLOR_SYMBOL, COLOR_BLACK, option)
+            priceFormat="%"+"."+str(option.remainDecimalPlaces)+"f"
+            self.optionPriceFormat[option.symbol] = priceFormat
             cellSymbol = OmCell(self.mainEngine.getContract(option.vtSymbol).name, COLOR_SYMBOL, COLOR_BLACK, option,
                                 10)
-            cellBidPrice = OmCell(str("%.4f" % option.bidPrice1), COLOR_BID, COLOR_BLACK, option, 10)
+            cellBidPrice = OmCell(str(priceFormat % option.bidPrice1), COLOR_BID, COLOR_BLACK, option, 10)
             cellBidVolume = OmCell(str(option.bidVolume1), COLOR_BID, COLOR_BLACK, option, 10)
             cellBidImpv = OmCell('%.2f' % (option.bidImpv * 100), COLOR_BID, COLOR_BLACK, option, 10)
-            cellAskPrice = OmCell(str("%.4f" % option.askPrice1), COLOR_ASK, COLOR_BLACK, option, 10)
+            cellAskPrice = OmCell(str(priceFormat % option.askPrice1), COLOR_ASK, COLOR_BLACK, option, 10)
             cellAskVolume = OmCell(str(option.askVolume1), COLOR_ASK, COLOR_BLACK, option, 10)
             cellAskImpv = OmCell('%.2f' % (option.askImpv * 100), COLOR_ASK, COLOR_BLACK, option, 10)
             cellMidImpv = OmCell('%.2f' % (option.midImpv * 100), COLOR_ASK, COLOR_BLACK, option, 10)
@@ -242,12 +247,14 @@ class NewChainMonitor(QtWidgets.QTableWidget):
 
         for option in self.chain.putDict.values():
             # cellSymbol = OmCell(option.symbol, COLOR_SYMBOL, COLOR_BLACK, option)
+            priceFormat = "%" +"."+ str(option.remainDecimalPlaces) + "f"
+            self.optionPriceFormat[option.symbol] = priceFormat
             cellSymbol = OmCell(self.mainEngine.getContract(option.vtSymbol).name, COLOR_SYMBOL, COLOR_BLACK, option,
                                 10)
-            cellBidPrice = OmCell(str("%.4f" % option.bidPrice1), COLOR_BID, COLOR_BLACK, option, 10)
+            cellBidPrice = OmCell(str(priceFormat % option.bidPrice1), COLOR_BID, COLOR_BLACK, option, 10)
             cellBidVolume = OmCell(str(option.bidVolume1), COLOR_BID, COLOR_BLACK, option, 10)
             cellBidImpv = OmCell('%.2f' % (option.bidImpv * 100), COLOR_BID, COLOR_BLACK, option, 10)
-            cellAskPrice = OmCell(str("%.4f" % option.askPrice1), COLOR_ASK, COLOR_BLACK, option, 10)
+            cellAskPrice = OmCell(str(priceFormat % option.askPrice1), COLOR_ASK, COLOR_BLACK, option, 10)
             cellAskVolume = OmCell(str(option.askVolume1), COLOR_ASK, COLOR_BLACK, option, 10)
             cellAskImpv = OmCell('%.2f' % (option.askImpv * 100), COLOR_ASK, COLOR_BLACK, option, 10)
             cellPos = OmCell(str(option.netPos), COLOR_POS, COLOR_BLACK, option, 10)
@@ -256,14 +263,11 @@ class NewChainMonitor(QtWidgets.QTableWidget):
             cellLongPos = OmCell(str(option.longPos), COLOR_POS, COLOR_BLACK, option, 10)
             cellshortPos = OmCell(str(option.shortPos), COLOR_POS, COLOR_BLACK, option, 10)
 
-            # cellDelta = OmCell(str(round(option.delta,4)), COLOR_POS, COLOR_BLACK, option, 10)
-            # cellGamma = OmCell(str(round(option.gamma,4)), COLOR_POS, COLOR_BLACK, option, 10)
-            # cellTheta = OmCell(str(round(option.theta,4)), COLOR_POS, COLOR_BLACK, option, 10)
-            # cellVega = OmCell(str(round(option.vega,4)), COLOR_POS, COLOR_BLACK, option, 10)
-            cellDelta = OmCell(str(round(option.dgammaDS, 4)), COLOR_POS, COLOR_BLACK, option, 10)
-            cellGamma = OmCell(str(round(option.dvegaDS, 4)), COLOR_POS, COLOR_BLACK, option, 10)
-            cellTheta = OmCell(str(round(option.vomma, 4)), COLOR_POS, COLOR_BLACK, option, 10)
-            cellVega = OmCell(str(round(option.vonna, 4)), COLOR_POS, COLOR_BLACK, option, 10)
+            cellDelta = OmCell(str(round(option.delta,4)), COLOR_POS, COLOR_BLACK, option, 10)
+            cellGamma = OmCell(str(round(option.gamma,4)), COLOR_POS, COLOR_BLACK, option, 10)
+            cellTheta = OmCell(str(round(option.theta,4)), COLOR_POS, COLOR_BLACK, option, 10)
+            cellVega = OmCell(str(round(option.vega,4)), COLOR_POS, COLOR_BLACK, option, 10)
+            
             cellfuture = OmCell(str(option.futurePrice), COLOR_STRIKE)
             # u'净仓16',
             # u'空仓17',
@@ -324,6 +328,8 @@ class NewChainMonitor(QtWidgets.QTableWidget):
 
     def initFutureCell(self):
         symbol = self.future.symbol
+        priceFormat = "%" + "." + str(self.future.remainDecimalPlaces) + "f"
+        self.optionPriceFormat[symbol]=priceFormat
         cellSymbol = OmCell(symbol, COLOR_SYMBOL, COLOR_BLACK, self.future, 10)
         cellBidPrice = OmCell(str(self.future.bidPrice1), COLOR_BID, COLOR_BLACK, self.future, 10)
         cellBidVolume = OmCell(str(self.future.bidVolume1), COLOR_BID, COLOR_BLACK, self.future, 10)
@@ -391,14 +397,10 @@ class NewChainMonitor(QtWidgets.QTableWidget):
             self.vegaDict[symbol].setText(str(round(option.vega, 4)))
             self.futureDic[symbol].setText(str(round(option.futurePrice, 4)))
 
-            # self.deltaDict[symbol].setText(str(round(option.dgammaDS, 4)))
-            # self.gammaDict[symbol].setText(str(round(option.dvegaDS, 4)))
-            # self.thetaDict[symbol].setText(str(round(option.vomma, 4)))
-            # self.vegaDict[symbol].setText(str(round(option.vonna, 4)))
 
-        self.bidPriceDict[symbol].setText("%.4f" % tick.bidPrice1)
+        self.bidPriceDict[symbol].setText(self.optionPriceFormat[symbol]  % tick.bidPrice1)
         self.bidVolumeDict[symbol].setText(str(tick.bidVolume1))
-        self.askPriceDict[symbol].setText("%.4f" % tick.askPrice1)
+        self.askPriceDict[symbol].setText(self.optionPriceFormat[symbol]  % tick.askPrice1)
         self.askVolumeDict[symbol].setText(str(tick.askVolume1))
 
     # ----------------------------------------------------------------------
@@ -1272,7 +1274,7 @@ class FloatTradingWidget(QtWidgets.QWidget):
         grid.addWidget(self.labelOptionName, 1, 0, 1, 2)
 
         grid.addLayout(self.shortDirectionHorizontalLayoutWidget, 0, 2, 1, 2)
-        grid.addWidget(self.fiveMarketWidget, 1, 2, 6, 2)
+        grid.addWidget(self.fiveMarketWidget, 1, 2, 3, 2)
         self.lineSymbol = QtWidgets.QLabel(item.symbol)
         grid.addWidget(labelSymbol, 2, 0)
         grid.addWidget(self.lineSymbol, 3, 0, 1, 2)
@@ -1460,7 +1462,8 @@ class FiveMarketWidget(QtWidgets.QTableWidget):
 
         # 初始化
         self.initUi(item)
-        self.setFixedHeight(350)
+        self.setFixedHeight(200)
+        self.verticalHeader().setDefaultSectionSize(15)
         self.eventEngine.register(EVENT_TICK + vtSymbol, self.processTickEvent)
 
     # ----------------------------------------------------------------------
@@ -1491,15 +1494,15 @@ class FiveMarketWidget(QtWidgets.QTableWidget):
         arrayaskVolume = [item.askVolume5, item.askVolume4, item.askVolume3, item.askVolume2, item.askVolume1]
 
         for row in range(0, 5, 1):
-            cellAskPrice = OmCell(str(arrayaskPrice[row]), COLOR_ASK, COLOR_BLACK)
-            cellAskVolume = OmCell(str(arrayaskVolume[row]), COLOR_ASK, COLOR_BLACK)
+            cellAskPrice = OmCell(str(arrayaskPrice[row]), COLOR_ASK, COLOR_BLACK,None,10)
+            cellAskVolume = OmCell(str(arrayaskVolume[row]), COLOR_ASK, COLOR_BLACK,None,10)
             self.setItem(row, 2, cellAskPrice)
             self.setItem(row, 3, cellAskVolume)
             self.askPriceDict[row] = cellAskPrice
             self.askVolumeDict[row] = cellAskVolume
 
-            cellBidPrice = OmCell(str(arrayBidPrice[row]), COLOR_BID, COLOR_BLACK)
-            cellBidVolume = OmCell(str(arrayBidVolume[row]), COLOR_BID, COLOR_BLACK)
+            cellBidPrice = OmCell(str(arrayBidPrice[row]), COLOR_BID, COLOR_BLACK,None,10)
+            cellBidVolume = OmCell(str(arrayBidVolume[row]), COLOR_BID, COLOR_BLACK,None,10)
             self.setItem(row + 5, 0, cellBidPrice)
             self.setItem(row + 5, 1, cellBidVolume)
             self.bidPriceDict[row] = cellBidPrice
@@ -1599,7 +1602,7 @@ class QuickTradeTable(QtWidgets.QTableWidget):
         self.itemClicked.connect(self.MyClick)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         # self.customContextMenuRequested.connect(self.MyClick)
-        self.verticalHeader().setDefaultSectionSize(15)
+        self.verticalHeader().setDefaultSectionSize(12)
         # ----------------------------------------------------------------------
 
     def MyClick(self,event):
@@ -1627,7 +1630,7 @@ class QuickTradeTable(QtWidgets.QTableWidget):
 
         self.setHorizontalHeaderLabels(self.headers)
 
-        self.setRowCount(40)
+        self.setRowCount(60)
 
         self.verticalHeader().setVisible(False)
         self.setEditTriggers(self.NoEditTriggers)
@@ -1644,28 +1647,29 @@ class QuickTradeTable(QtWidgets.QTableWidget):
                                 [item.askVolume5, item.askVolume4, item.askVolume3, item.askVolume2, item.askVolume1]))
 
         self.price = item.lastPrice
-        for row in range(-20, 20, 1):
-            price = item.lastPrice - row / 10000.0
-            cellPrice = OmCell(str(price), COLOR_BLACK, COLOR_SYMBOL, None, 10)
+
+        for row in range(-30, 30, 1):
+            price = item.lastPrice - row * item.priceTick
+            cellPrice = OmCell(str(price), COLOR_BLACK, COLOR_SYMBOL, None, 8)
 
             if price in self.bidDict.keys():
-                cellBid = OmCell(str(self.bidDict[price]), COLOR_BID, COLOR_BLACK, None, 10)
+                cellBid = OmCell(str(self.bidDict[price]), COLOR_BID, COLOR_BLACK, None, 8)
             else:
-                cellBid = OmCell("", COLOR_BID, COLOR_BLACK, None, 10)
+                cellBid = OmCell("", COLOR_BID, COLOR_BLACK, None, 8)
 
             if price in self.askDict.keys():
-                askBid = OmCell(str(self.askDict[price]), COLOR_ASK, COLOR_BLACK, None, 10)
+                askBid = OmCell(str(self.askDict[price]), COLOR_ASK, COLOR_BLACK, None, 8)
             else:
-                askBid = OmCell("", COLOR_ASK, COLOR_BLACK, None, 10)
+                askBid = OmCell("", COLOR_ASK, COLOR_BLACK, None, 8)
 
-            self.cellPriceDict[row + 20] = cellPrice
-            self.cellBidVolume[row + 20] = cellBid
+            self.cellPriceDict[row + 30] = cellPrice
+            self.cellBidVolume[row + 30] = cellBid
 
-            self.cellAskVolume[row + 20] = askBid
+            self.cellAskVolume[row + 30] = askBid
 
-            self.setItem(row + 20, 2, cellPrice)
-            self.setItem(row + 20, 1, cellBid)
-            self.setItem(row + 20, 3, askBid)
+            self.setItem(row + 30, 2, cellPrice)
+            self.setItem(row + 30, 1, cellBid)
+            self.setItem(row + 30, 3, askBid)
 
         self.initOrderCell()
 
@@ -1673,27 +1677,27 @@ class QuickTradeTable(QtWidgets.QTableWidget):
         # 委托量展示
         longVolumeDic, longLocalIDDic, shortVolumeDic, shortLocalIDDic = self.calculateOrderDict()
         if longVolumeDic:
-            for row in range(0, 40, 1):
+            for row in range(0, 60, 1):
                 priceAndVtSymbol = self.cellPriceDict[row].text() + self.vtSymbol
                 if priceAndVtSymbol in longVolumeDic.keys():
                     bidEntrust = OmCell(str(longVolumeDic[priceAndVtSymbol]), COLOR_BID, COLOR_BLACK,
-                                        longLocalIDDic[priceAndVtSymbol], 10)
+                                        longLocalIDDic[priceAndVtSymbol], 8)
                 else:
-                    bidEntrust = OmCell("", COLOR_BID, COLOR_BLACK, None, 10)
+                    bidEntrust = OmCell("", COLOR_BID, COLOR_BLACK, None, 8)
                 if priceAndVtSymbol in shortVolumeDic.keys():
                     askEntrust = OmCell(str(shortVolumeDic[priceAndVtSymbol]), COLOR_ASK, COLOR_BLACK,
-                                        shortLocalIDDic[priceAndVtSymbol], 10)
+                                        shortLocalIDDic[priceAndVtSymbol], 8)
                 else:
-                    askEntrust = OmCell("", COLOR_ASK, COLOR_BLACK, None, 10)
+                    askEntrust = OmCell("", COLOR_ASK, COLOR_BLACK, None, 8)
                 self.cellBidEntrust[row] = bidEntrust
                 self.cellAskEntrust[row] = askEntrust
 
                 self.setItem(row, 0, bidEntrust)
                 self.setItem(row, 4, askEntrust)
         else:
-            for row in range(0, 40, 1):
-                bidEntrust = OmCell("", COLOR_BID, COLOR_BLACK, None, 10)
-                askEntrust = OmCell("", COLOR_ASK, COLOR_BLACK, None, 10)
+            for row in range(0, 60, 1):
+                bidEntrust = OmCell("", COLOR_BID, COLOR_BLACK, None, 8)
+                askEntrust = OmCell("", COLOR_ASK, COLOR_BLACK, None, 8)
                 self.cellBidEntrust[row] = bidEntrust
                 self.cellAskEntrust[row] = askEntrust
                 self.setItem(row, 0, bidEntrust)
@@ -1784,25 +1788,27 @@ class QuickTradeTable(QtWidgets.QTableWidget):
         self.askDict = dict(zip([item.askPrice5, item.askPrice4, item.askPrice3, item.askPrice2, item.askPrice1],
                                 [item.askVolume5, item.askVolume4, item.askVolume3, item.askVolume2, item.askVolume1]))
 
-        for row in range(-20, 20, 1):
-            price = self.price - row / 10000.0
-            self.cellPriceDict[row + 20].setText(str(price))
+        instrument=self.portfolio.instrumentDict[item.symbol]
+
+        for row in range(-30, 30, 1):
+            price = self.price - row *instrument.priceTick
+            self.cellPriceDict[row + 30].setText(str(price))
             if price in self.bidDict.keys():
-                self.cellBidVolume[row + 20].setText(str(self.bidDict[price]))
+                self.cellBidVolume[row + 30].setText(str(self.bidDict[price]))
             else:
-                self.cellBidVolume[row + 20].setText("")
+                self.cellBidVolume[row + 30].setText("")
 
             if price in self.askDict.keys():
-                self.cellAskVolume[row + 20].setText(str(self.askDict[price]))
+                self.cellAskVolume[row + 30].setText(str(self.askDict[price]))
             else:
-                self.cellAskVolume[row + 20].setText("")
+                self.cellAskVolume[row + 30].setText("")
         self.changeOrderData()
 
     def changeOrderData(self, item=None):
         """委托数据更新"""
         longVolumeDic, longLocalIDDic, shortVolumeDic, shortLocalIDDic = self.calculateOrderDict()
         if longVolumeDic or shortVolumeDic:
-            for row in range(0, 40, 1):
+            for row in range(0, 60, 1):
                 priceAndVtSymbol = self.cellPriceDict[row].text() + self.vtSymbol
 
                 if priceAndVtSymbol in longVolumeDic.keys():
@@ -1819,7 +1825,7 @@ class QuickTradeTable(QtWidgets.QTableWidget):
                     self.cellAskEntrust[row].setText("")
                     self.cellAskEntrust[row].data = None
         else:
-            for row in range(0, 40, 1):
+            for row in range(0, 60, 1):
                 self.cellAskEntrust[row].setText("")
                 self.cellAskEntrust[row].data = None
                 self.cellBidEntrust[row].setText("")
@@ -1861,7 +1867,8 @@ class ManualTrader(QtWidgets.QWidget):
         posMonitor = PositionMonitor(self.mainEngine, self.eventEngine)
         accountMonitor = AccountMonitor(self.mainEngine, self.eventEngine)
 
-        optionAnalysisTable = OptionAnalysisTable(self.omEngine)
+        optionAnalysisTable = OptionAnalysisTable(self.omEngine,'position')
+        optionAnalysisTable2 = OptionAnalysisTable(self.omEngine, 'tick')
         # for i in range(OptionAnalysisTable.columnCount()):
         #     OptionAnalysisTable.horizontalHeader().setResizeMode(QtWidgets.QHeaderView.Stretch)
         #     OptionAnalysisTable.setSorting(False)
@@ -1877,6 +1884,7 @@ class ManualTrader(QtWidgets.QWidget):
 
         tab2 = QtWidgets.QTabWidget()
         tab2.addTab(optionAnalysisTable, u'greeks汇总')
+        tab2.addTab(optionAnalysisTable2, u'行情统计')
         tab2.addTab(posMonitor, u'持仓')
         tab2.addTab(orderMonitor, u'可撤委托')
         tab2.addTab(accountMonitor, u'账户')
@@ -1893,9 +1901,25 @@ class ManualTrader(QtWidgets.QWidget):
         ivButton.clicked.connect(self.openVolatilityChart)
         ivButton.setFixedWidth(100)
 
+        ivBookButton = QtWidgets.QPushButton(u'IV报单')
+        ivBookButton.clicked.connect(self.openBookVolatility)
+        ivBookButton.setFixedWidth(100)
+
         cancelAllButton = QtWidgets.QPushButton(u'全撤')
         cancelAllButton.clicked.connect(self.cancelAll)
         cancelAllButton.setFixedWidth(100)
+
+        # IV算法
+        # ivAlgorithmHorizontalLayoutWidget = QtWidgets.QHBoxLayout()
+        # self.ivAlgorithmRadio1 = QtWidgets.QRadioButton(u"波动率算法1")
+        # self.ivAlgorithmRadio2 = QtWidgets.QRadioButton(u"波动率算法2")
+        # self.ivAlgorithmRadio1.setChecked(True)
+        # self.ivAlgorithmRadio1.clicked.connect(self.changeMainEngineIVAlgorithm1)
+        # self.ivAlgorithmRadio2.clicked.connect(self.changeMainEngineIVAlgorithm2)
+        #
+        # ivAlgorithmHorizontalLayoutWidget.addWidget(self.ivAlgorithmRadio1)
+        # ivAlgorithmHorizontalLayoutWidget.addWidget(self.ivAlgorithmRadio2)
+
 
         for chain in self.omEngine.portfolio.chainDict.values():
             chainMonitor = NewChainMonitor(chain, self.omEngine, self.mainEngine, self.eventEngine,
@@ -1908,6 +1932,7 @@ class ManualTrader(QtWidgets.QWidget):
         vhboxButtons = QtWidgets.QHBoxLayout()
         vhboxButtons.addWidget(headerSelectButton)
         vhboxButtons.addWidget(ivButton)
+        vhboxButtons.addWidget(ivBookButton)
         vhboxButtons.addWidget(cancelAllButton)
         vhboxButtons.addStretch()
         vbox.addLayout(vhboxButtons)
@@ -1918,6 +1943,11 @@ class ManualTrader(QtWidgets.QWidget):
         vbox.addWidget(tab2)
         self.setLayout(vbox)
 
+    def changeMainEngineIVAlgorithm1(self, isChecked):
+        self.mainEngine.ivAlgorithm = 1
+
+    def changeMainEngineIVAlgorithm2(self, isChecked):
+        self.mainEngine.ivAlgorithm = 2
     # ----------------------------------------------------------------------
     def cancelAll(self):
         """一键撤销所有委托"""
@@ -1930,6 +1960,15 @@ class ManualTrader(QtWidgets.QWidget):
             req.sessionID = order.sessionID
             req.orderID = order.orderID
             self.mainEngine.cancelOrder(req, order.gatewayName)
+
+        # ----------------------------------------------------------------------
+    def openBookVolatility(self):
+        """打开波动率图表组件"""
+        try:
+            self.bookVolatility.showMaximized()
+        except:
+            self.bookVolatility = BookVolatility(self.omEngine)
+            self.bookVolatility.showMaximized()
 
     # ----------------------------------------------------------------------
     def openVolatilityChart(self):
@@ -2012,17 +2051,7 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
     headers = [
         u'到期日',
         u'到期时间',
-        u'CPrice',
-        u'CBidVol',
-        u'CAskVol',
-        u'CallImv',
-        u'执行价格',
         u'隐含利率',
-        u'PutImv',
-        u'PAskVol',
-        u'PBidVol',
-        u'PPrice',
-
         u'Delta',
         u'Gamma',
         u'Vega',
@@ -2036,10 +2065,18 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         u'CallImpv',
         u'Impv',
         u'PutImpv',
-        u'远期波动率'
+        u'远期波动率',
+        u'Call成交',
+        u'Put成交',
+        u'总成交',
+        u'Call持仓',
+        u'Put持仓',
+        u'总持仓',
+        u'Vega分解',
+        u'远期2'
     ]
 
-    def __init__(self, omEngine, parent=None):
+    def __init__(self, omEngine,kind,parent=None):
         """Constructor"""
         super(OptionAnalysisTable, self).__init__(parent)
 
@@ -2052,16 +2089,9 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.cellDueDate = {}
         # 到期时间
         self.cellDueTime = {}
-        self.cellCallPrice = {}
-        self.cellCallBidVol = {}
-        self.cellCallAskVol = {}
-        self.cellCallImv = {}
-        self.cellK = {}
+
         self.cellRate = {}
-        self.cellPutImv = {}
-        self.cellPutAskVol = {}
-        self.cellPutBidVol = {}
-        self.cellPutPrice = {}
+
 
         self.cellDelta = {}
         self.cellGamma = {}
@@ -2078,6 +2108,18 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.cellPosVomma = {}
         self.cellPosVonna = {}
 
+        self.cellPosDgammaDS = {}
+        self.cellPosDvegaDS = {}
+        self.cellPosVomma = {}
+        self.cellPosVonna = {}
+
+        self.cellCallPosition = {}
+        self.cellPutPosition = {}
+        self.cellTotalPosition = {}
+        self.cellCallVolumn = {}
+        self.cellPutVolumn = {}
+        self.cellTotalVolumn = {}
+
         self.totalPosDgammaDS = None
         self.totalPosDvegaDS = None
         self.totalPosVomma = None
@@ -2088,14 +2130,38 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.totalCellVega = None
         self.totalCellTheta = None
         self.impvCellDecompose = {}
+        self.impvCellDecompose2 = {}
         self.forwardImpv = {}
+        self.forwardImpv2 = {}
         self.dueTime = {}
         self.impv = {}
+        self.impv2={}
         self.underlying = None
 
+        self.callVolumn = None
+        self.putVolumn = None
+        self.totalVolumn = None
+
+        self.cellDecomposeVega={}
+        self.decomposeVega={}
+        self.atTheMoneyVega={}
+        self.chainPosVega={}
+
+        self.callPosition = None
+        self.putPosition = None
+        self.totalPosition = None
+
         self.initUi()
-        self.hiddenColmns()
         self.eventEngine.register(EVENT_TIMER, self.timingCalculate)
+        if kind=='position':
+            for i in range(11,16):
+                self.hideColumn(i)
+            for i in range(17,23):
+                self.hideColumn(i)
+        else:
+            for i in range(0,11):
+                self.hideColumn(i)
+            self.hideColumn(23)
 
     def initUi(self):
         """初始化界面"""
@@ -2127,41 +2193,46 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.totalPosVomma = OmCell(str(self.portfolio.posVomma), None, COLOR_POS)
         self.totalPosVonna = OmCell(str(self.portfolio.posVonna), None, COLOR_POS)
 
+        self.callVolumn = OmCell(str(self.portfolio.callVolume), None, COLOR_POS)
+        self.putVolumn = OmCell(str(self.portfolio.putVolume), None, COLOR_POS)
+        self.totalVolumn = OmCell(str(self.portfolio.callVolume+self.portfolio.putVolume), None, COLOR_POS)
+
+        self.callPosition = OmCell(str(self.portfolio.callPostion), None, COLOR_POS)
+        self.putPosition = OmCell(str(self.portfolio.putPostion), None, COLOR_POS)
+        self.totalPosition = OmCell(str(self.portfolio.callPostion+self.portfolio.putPostion), None, COLOR_POS)
+
         self.setItem(4, 0, OmCell(u"汇总", None, COLOR_POS))
         self.setItem(5, 0, OmCell(u"标的物", None, COLOR_POS))
 
         self.underlyingDelta = OmCell(str(int(self.underlying.netPos * self.underlying.lastPrice * 0.01)), None,
                                       COLOR_POS)
-        self.setItem(5, 12, self.underlyingDelta)
+        self.setItem(5, 3, self.underlyingDelta)
 
-        self.setItem(4, 12, self.totalCellDelta)
-        self.setItem(4, 13, self.totalCellGamma)
-        self.setItem(4, 14, self.totalCellVega)
-        self.setItem(4, 15, self.totalCellTheta)
+        self.setItem(4, 3, self.totalCellDelta)
+        self.setItem(4, 4, self.totalCellGamma)
+        self.setItem(4, 5, self.totalCellVega)
+        self.setItem(4, 6, self.totalCellTheta)
 
-        self.setItem(4, 16, self.totalPosDgammaDS)
-        self.setItem(4, 17, self.totalPosDvegaDS)
-        self.setItem(4, 18, self.totalPosVomma)
-        self.setItem(4, 19, self.totalPosVonna)
+        self.setItem(4, 7, self.totalPosDgammaDS)
+        self.setItem(4, 8, self.totalPosDvegaDS)
+        self.setItem(4, 9, self.totalPosVomma)
+        self.setItem(4, 10, self.totalPosVonna)
+
+        self.setItem(4, 17, self.callVolumn)
+        self.setItem(4, 18, self.putVolumn)
+        self.setItem(4, 19, self.totalVolumn)
+
+        self.setItem(4, 20, self.callPosition)
+        self.setItem(4, 21, self.putPosition)
+        self.setItem(4, 22, self.totalPosition)
 
         for row, chain in enumerate(self.portfolio.chainDict.values()):
             cellDueDate = OmCell(str(chain.optionDict[chain.atTheMoneySymbol].expiryDate), None, COLOR_POS)
             cellDueTime = OmCell(str(round(chain.optionDict[chain.atTheMoneySymbol].t, 4)), None, COLOR_POS)
             self.dueTime[row] = chain.optionDict[chain.atTheMoneySymbol].t
 
-            cellCallPrice = OmCell(str(chain.optionDict[chain.atTheMoneySymbol].midPrice), None, COLOR_POS)
-            cellCallBidVol = OmCell(str(chain.optionDict[chain.atTheMoneySymbol].bidVolume1), None, COLOR_POS)
-
-            cellCallAskVol = OmCell(str(chain.optionDict[chain.atTheMoneySymbol].askVolume1), None, COLOR_POS)
-            cellCallImv = OmCell(str(chain.optionDict[chain.atTheMoneySymbol].midImpv), None, COLOR_POS)
-
-            cellK = OmCell(str(chain.optionDict[chain.atTheMoneySymbol].k), None, COLOR_POS)
             cellRate = OmCell(str(chain.chainRate), COLOR_BID, COLOR_POS)
 
-            cellPutImv = OmCell(str(chain.relativeOption[chain.atTheMoneySymbol].midImpv), None, COLOR_POS)
-            cellPutAskVol = OmCell(str(chain.relativeOption[chain.atTheMoneySymbol].askVolume1), None, COLOR_POS)
-            cellPutBidVol = OmCell(str(chain.relativeOption[chain.atTheMoneySymbol].bidVolume1), None, COLOR_POS)
-            cellPutPrice = OmCell(str(chain.relativeOption[chain.atTheMoneySymbol].midPrice), None, COLOR_POS)
 
             cellDelta = OmCell(str(chain.posDelta), None, COLOR_POS)
             cellGamma = OmCell(str(chain.posGamma), None, COLOR_POS)
@@ -2173,6 +2244,7 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             cellPutImpv = OmCell('%.2f' % (chain.putImpv * 100), None, COLOR_POS)
             cellImpv = OmCell('%.2f' % ((chain.putImpv / 2 + chain.callImpv / 2) * 100), None, COLOR_POS)
             self.impv[row] = chain.putImpv / 2 + chain.callImpv / 2
+            self.impv2[row] = chain.putImpv2 / 2 + chain.callImpv2 / 2
 
             cellDelta = OmCell(str(chain.posDelta), None, COLOR_POS)
             cellGamma = OmCell(str(chain.posGamma), None, COLOR_POS)
@@ -2183,6 +2255,20 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             cellPosDvegaDS = OmCell(str(chain.posDvegaDS), None, COLOR_POS)
             cellPosVomma = OmCell(str(chain.posVomma), None, COLOR_POS)
             cellPosVonna = OmCell(str(chain.posVonna), None, COLOR_POS)
+
+            cellCallPosition = OmCell(str(chain.callPostion), None, COLOR_POS)
+            cellPutPosition = OmCell(str(chain.putPostion), None, COLOR_POS)
+            cellTotalPosition = OmCell(str(chain.callPostion+chain.putPostion), None, COLOR_POS)
+            cellCallVolumn = OmCell(str(chain.callVolume), None, COLOR_POS)
+            cellPutVolumn = OmCell(str(chain.putVolume), None, COLOR_POS)
+            cellTotalVolumn = OmCell(str(chain.callVolume+chain.putVolume), None, COLOR_POS)
+            self.cellCallVolumn[row] = cellCallVolumn
+            self.cellPutVolumn[row] = cellPutVolumn
+            self.cellTotalVolumn[row] = cellTotalVolumn
+            self.cellCallPosition[row] =cellCallPosition
+            self.cellPutPosition[row] = cellPutPosition
+            self.cellTotalPosition[row] = cellTotalPosition
+
 
             self.cellPosDgammaDS[row] = cellPosDgammaDS
             self.cellPosDvegaDS[row] = cellPosDvegaDS
@@ -2198,63 +2284,165 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             # 到期时间
             self.cellDueTime[row] = cellDueTime
 
-            self.cellCallPrice[row] = cellCallPrice
-            self.cellCallBidVol[row] = cellCallBidVol
-            self.cellCallAskVol[row] = cellCallAskVol
-            self.cellCallImv[row] = cellCallImv
-            self.cellImpv[row] = cellImpv
 
-            self.cellK[row] = cellK
             self.cellRate[row] = cellRate
-
-            self.cellPutImv[row] = cellPutImv
-            self.cellPutAskVol[row] = cellPutAskVol
-            self.cellPutBidVol[row] = cellPutBidVol
-            self.cellPutPrice[row] = cellPutPrice
 
             self.cellConvexity[row] = cellConvexity
             self.cellSkew[row] = cellSkew
 
             self.cellCallImpv[row] = cellCallImpv
-
+            self.cellImpv[row] = cellImpv
             self.cellPutImpv[row] = cellPutImpv
+
+
 
             self.setItem(row, 0, cellDueDate)
             self.setItem(row, 1, cellDueTime)
-            self.setItem(row, 2, cellCallPrice)
-            self.setItem(row, 3, cellCallBidVol)
-            self.setItem(row, 4, cellCallAskVol)
-            self.setItem(row, 5, cellCallImv)
-            self.setItem(row, 6, cellK)
-            self.setItem(row, 7, cellRate)
-            self.setItem(row, 8, cellPutImv)
-            self.setItem(row, 9, cellPutAskVol)
-            self.setItem(row, 10, cellPutBidVol)
-            self.setItem(row, 11, cellPutPrice)
+            self.setItem(row, 2, cellRate)
+            self.setItem(row, 3, cellDelta)
+            self.setItem(row, 4, cellGamma)
+            self.setItem(row, 5, cellVega)
+            self.setItem(row, 6, cellTheta)
+            self.setItem(row, 7, cellPosDgammaDS)
+            self.setItem(row, 8, cellPosDvegaDS)
+            self.setItem(row, 9, cellPosVomma)
+            self.setItem(row, 10, cellPosVonna)
 
-            self.setItem(row, 12, cellDelta)
-            self.setItem(row, 13, cellGamma)
-            self.setItem(row, 14, cellVega)
-            self.setItem(row, 15, cellTheta)
-            self.setItem(row, 16, cellPosDgammaDS)
-            self.setItem(row, 17, cellPosDvegaDS)
-            self.setItem(row, 18, cellPosVomma)
-            self.setItem(row, 19, cellPosVonna)
+            self.setItem(row, 11, cellConvexity)
+            self.setItem(row, 12, cellSkew)
 
-            self.setItem(row, 20, cellConvexity)
-            self.setItem(row, 21, cellSkew)
+            self.setItem(row, 13, cellCallImpv)
+            self.setItem(row, 14, cellImpv)
+            self.setItem(row, 15, cellPutImpv)
 
-            self.setItem(row, 22, cellCallImpv)
-            self.setItem(row, 23, cellImpv)
-            self.setItem(row, 24, cellPutImpv)
+            self.setItem(row, 17, cellCallVolumn)
+            self.setItem(row, 18, cellPutVolumn)
+            self.setItem(row, 19, cellTotalVolumn)
+            self.setItem(row, 20, cellCallPosition)
+            self.setItem(row, 21, cellPutPosition)
+            self.setItem(row, 22, cellTotalPosition)
 
-        self.calculateForwardImpv()
-        self.impvCellDecompose[0] = OmCell('%.1f' % (self.forwardImpv[0] * 100), None, COLOR_POS)
-        self.impvCellDecompose[1] = OmCell('%.1f' % (self.forwardImpv[1] * 100), None, COLOR_POS)
-        self.impvCellDecompose[2] = OmCell('%.1f' % (self.forwardImpv[2] * 100), None, COLOR_POS)
-        self.setItem(1, 25, self.impvCellDecompose[0])
-        self.setItem(2, 25, self.impvCellDecompose[1])
-        self.setItem(3, 25, self.impvCellDecompose[2])
+            self.atTheMoneyVega[row]=chain.optionDict[chain.atTheMoneySymbol].vega
+            self.chainPosVega[row]=chain.posVega
+
+        if self.underlying.symbol=='510050':
+            self.calculateForwardImpv()
+            self.impvCellDecompose[0] = OmCell('%.2f' % (self.impv[0] * 100), None, COLOR_POS)
+            self.impvCellDecompose[1] = OmCell('%.2f' % (self.forwardImpv[0] * 100), None, COLOR_POS)
+            self.impvCellDecompose[2] = OmCell('%.2f' % (self.forwardImpv[1] * 100), None, COLOR_POS)
+            self.impvCellDecompose[3] = OmCell('%.2f' % (self.forwardImpv[2] * 100), None, COLOR_POS)
+            self.impvCellDecompose2[0] = OmCell('%.2f' % (self.impv2[0] * 100), None, COLOR_POS)
+            self.impvCellDecompose2[1] = OmCell('%.2f' % (self.forwardImpv2[0] * 100), None, COLOR_POS)
+            self.impvCellDecompose2[2] = OmCell('%.2f' % (self.forwardImpv2[1] * 100), None, COLOR_POS)
+            self.impvCellDecompose2[3] = OmCell('%.2f' % (self.forwardImpv2[2] * 100), None, COLOR_POS)
+
+            self.setItem(0, 16, self.impvCellDecompose[0])
+            self.setItem(1, 16, self.impvCellDecompose[1])
+            self.setItem(2, 16, self.impvCellDecompose[2])
+            self.setItem(3, 16, self.impvCellDecompose[3])
+
+            self.setItem(0, 24, self.impvCellDecompose2[0])
+            self.setItem(1, 24, self.impvCellDecompose2[1])
+            self.setItem(2, 24, self.impvCellDecompose2[2])
+            self.setItem(3, 24, self.impvCellDecompose2[3])
+
+            self.calculateDecomposeGreeks()
+            self.cellDecomposeVega[0] = OmCell('%.0f' % (self.decomposeVega[0]), None, COLOR_POS)
+            self.cellDecomposeVega[1] = OmCell('%.0f' % (self.decomposeVega[1]), None, COLOR_POS)
+            self.cellDecomposeVega[2] = OmCell('%.0f' % (self.decomposeVega[2]), None, COLOR_POS)
+            self.cellDecomposeVega[3] = OmCell('%.0f' % (self.decomposeVega[3]), None, COLOR_POS)
+
+            self.setItem(0, 23, self.cellDecomposeVega[0])
+            self.setItem(1, 23, self.cellDecomposeVega[1])
+            self.setItem(2, 23, self.cellDecomposeVega[2])
+            self.setItem(3, 23, self.cellDecomposeVega[3])
+
+
+    #add by lsm 20180212
+    def calculateDecomposeGreeks(self):
+        # 更新算法2018.02.28
+        # 1取四个不同到期日的到期时间T1 T2 T3 T4
+        # 2对到期时间开根号，结果为t1 t2 t3 t4计算t12 = t2 - t1,t23 = t3 - t2,t34 = t4 - t3
+        # 3四个到期日的持仓vega分别为pos1,pos2,pos3,pos4
+        # 4分解后的持仓希腊值
+        # VegaⅠ = pos1 + pos2 * (t1 / t2) + pos3 * (t1 / t3) + pos4 * (t1 / t4)
+        # VegaⅡ = pos2 * (t12 / t2) + pos3 * (t12 / t3) + pos4 * (t12 / t4)
+        # VegaⅢ = pos3 * (t23 / t3) + pos4 * (t23 / t4)
+        # VegaⅣ = pos4 * (t34 / t4) self.dueTime[row]
+
+        t1 = sqrt(self.dueTime[0])
+        t2 = sqrt(self.dueTime[1])
+        t3 = sqrt(self.dueTime[2])
+        t4 = sqrt(self.dueTime[3])
+        t12 = t2-t1
+        t23 = t3-t2
+        t34 = t4-t3
+
+        try:
+            self.decomposeVega[0] = self.chainPosVega[0] + \
+                                    self.chainPosVega[1] * (t1 / t2) + \
+                                    self.chainPosVega[2] * (t1 / t3) + \
+                                    self.chainPosVega[3] * (t1 / t4)
+        except:
+            self.decomposeVega[0] = 0
+
+        try:
+            self.decomposeVega[1] = self.chainPosVega[1] * (t12 /t2) + \
+                                    self.chainPosVega[2] * (t12 / t3) + \
+                                    self.chainPosVega[3] * (t12 / t4)
+        except:
+            self.decomposeVega[1] = 0
+
+        try:
+            self.decomposeVega[2] = self.chainPosVega[2] * (t23 /  t3) + \
+                                    self.chainPosVega[3] * (t23 /  t4)
+        except:
+            self.decomposeVega[2] = 0
+
+        try:
+            self.decomposeVega[3] = self.chainPosVega[3] * (t34/  t4)
+        except:
+            self.decomposeVega[3] = 0
+
+        # 1.取四个不同到期日的，找到平值执行价K = min | Delta(K) - 0.5 |   ，计算四个平值的vega1,vega2, vega3,vega4
+        # 2.即期vega01 = vega1远期vega12 = vega2 - vega1,vega23 = vega3 - vega2,vega34 = vega4 - vega3
+        # 3.四个到期日的持仓vega分别为pos1,pos2,pos3,pos4
+        # 4.分解后的持仓希腊值
+        # VegaⅠ = pos1 + pos2 * (vega01 / vega2) + pos3 * (vega01 / vega3) + pos4 * (vega01 / vega4)
+        # VegaⅡ = pos2 * (vega12 / vega2) + pos3 * (vega12 / vega3) + pos4 * (vega12 / vega4)
+        # VegaⅢ = pos3 * (vega23 / vega3) + pos4 * (vega23 / vega4)
+        # VegaⅣ = pos4 * (vega34 / vega4)
+        # forwordVega={}
+        # forwordVega[0]=self.atTheMoneyVega[0]
+        # forwordVega[1] =self.atTheMoneyVega[1]-self.atTheMoneyVega[0]
+        # forwordVega[2] = self.atTheMoneyVega[2] - self.atTheMoneyVega[1]
+        # forwordVega[3] = self.atTheMoneyVega[3] - self.atTheMoneyVega[2]
+        #
+        # try:
+        #     self.decomposeVega[0]=self.chainPosVega[0]+\
+        #                       self.chainPosVega[1]*(forwordVega[0]/self.atTheMoneyVega[1])+\
+        #                       self.chainPosVega[2]*(forwordVega[0]/self.atTheMoneyVega[2])+\
+        #                       self.chainPosVega[3]*(forwordVega[0]/self.atTheMoneyVega[3])
+        # except:
+        #     self.decomposeVega[0]=0
+        #
+        # try:
+        #     self.decomposeVega[1] = self.chainPosVega[1] * (forwordVega[1] / self.atTheMoneyVega[1]) + \
+        #                         self.chainPosVega[2] * (forwordVega[1] / self.atTheMoneyVega[2]) + \
+        #                         self.chainPosVega[3] * (forwordVega[1] / self.atTheMoneyVega[3])
+        # except:
+        #     self.decomposeVega[1]=0
+        #
+        # try:
+        #     self.decomposeVega[2] = self.chainPosVega[2] * (forwordVega[2] / self.atTheMoneyVega[2]) + \
+        #                         self.chainPosVega[3] * (forwordVega[2] / self.atTheMoneyVega[3])
+        # except:
+        #     self.decomposeVega[2]=0
+        #
+        # try:
+        #     self.decomposeVega[3] =self.chainPosVega[3] * (forwordVega[3] / self.atTheMoneyVega[3])
+        # except:
+        #     self.decomposeVega[3]=0
 
     def calculateForwardImpv(self):
         for index in self.dueTime.keys():
@@ -2266,42 +2454,21 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
                     self.forwardImpv[index] = 0
         self.forwardImpv[3] = 0
 
-    def hiddenColmns(self):
-        self.hideColumn(2)
-        self.hideColumn(3)
-        self.hideColumn(4)
-        self.hideColumn(5)
-        self.hideColumn(6)
-        self.hideColumn(8)
-        self.hideColumn(9)
-        self.hideColumn(10)
-        self.hideColumn(11)
+
+        for index in self.dueTime.keys():
+            if index < 3:
+                try:
+                    self.forwardImpv2[index] = sqrt((self.impv2[index + 1] ** 2 * self.dueTime[index + 1] - self.impv2[
+                        index] ** 2 * self.dueTime[index]) / (self.dueTime[index + 1] - self.dueTime[index]))
+                except:
+                    self.forwardImpv2[index] = 0
+        self.forwardImpv2[3] = 0
 
     def timingCalculate(self, event):
         for row, chain in enumerate(self.portfolio.chainDict.values()):
             self.cellDueTime[row].setText(str(round(chain.optionDict[chain.atTheMoneySymbol].t, 4)))
-
-            self.cellCallPrice[row].setText(str(chain.optionDict[chain.atTheMoneySymbol].midPrice))
-
-            self.cellCallBidVol[row].setText(str(chain.optionDict[chain.atTheMoneySymbol].bidVolume1))
-
-            self.cellCallAskVol[row].setText(str(chain.optionDict[chain.atTheMoneySymbol].askVolume1))
-
-            self.cellCallImv[row].setText(str(chain.optionDict[chain.atTheMoneySymbol].midImpv))
-
-            self.cellK[row].setText(str(chain.optionDict[chain.atTheMoneySymbol].k))
-
             self.dueTime[row] = chain.optionDict[chain.atTheMoneySymbol].t
             self.cellRate[row].setText(str(chain.chainRate))
-
-            self.cellPutPrice[row].setText(str(chain.relativeOption[chain.atTheMoneySymbol].midPrice))
-
-            self.cellPutBidVol[row].setText(str(chain.relativeOption[chain.atTheMoneySymbol].bidVolume1))
-
-            self.cellPutAskVol[row].setText(str(chain.relativeOption[chain.atTheMoneySymbol].askVolume1))
-
-            self.cellPutImv[row].setText(str(chain.relativeOption[chain.atTheMoneySymbol].midImpv))
-
             self.cellDelta[row].setText(str(chain.posDelta))
             self.cellGamma[row].setText(str(chain.posGamma))
             self.cellVega[row].setText(str(chain.posVega))
@@ -2315,14 +2482,25 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             self.cellImpv[row].setText('%.2f' % ((chain.putImpv / 2 + chain.callImpv / 2) * 100))
 
             self.impv[row] = chain.putImpv / 2 + chain.callImpv / 2
+            self.impv2[row] = chain.putImpv2 / 2 + chain.callImpv2 / 2
 
             self.cellPosDgammaDS[row].setText(str(chain.posDgammaDS))
             self.cellPosDvegaDS[row].setText(str(chain.posDvegaDS))
             self.cellPosVomma[row].setText(str(chain.posVomma))
             self.cellPosVonna[row].setText(str(chain.posVonna))
 
-        self.totalCellDelta.setText(
-            str(self.portfolio.posDelta + self.underlying.netPos * self.underlying.lastPrice * 0.01))
+            self.cellCallPosition[row].setText(str(chain.callPostion))
+            self.cellPutPosition[row].setText(str(chain.putPostion))
+            self.cellTotalPosition[row].setText(str(chain.callPostion + chain.putPostion))
+            self.cellCallVolumn[row].setText(str(chain.callVolume))
+            self.cellPutVolumn[row].setText(str(chain.putVolume))
+            self.cellTotalVolumn[row].setText(str(chain.callVolume + chain.putVolume))
+
+            self.atTheMoneyVega[row] = chain.optionDict[chain.atTheMoneySymbol].vega
+            self.chainPosVega[row] = chain.posVega
+
+
+        self.totalCellDelta.setText(str(self.portfolio.posDelta + self.underlying.netPos * self.underlying.lastPrice * 0.01))
         self.totalCellGamma.setText(str(self.portfolio.posGamma))
         self.totalCellVega.setText(str(self.portfolio.posVega))
         self.totalCellTheta.setText(str(self.portfolio.posTheta))
@@ -2333,10 +2511,30 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.totalPosVonna.setText(str(self.portfolio.posVonna))
         self.underlyingDelta.setText(str(int(self.underlying.netPos * self.underlying.lastPrice * 0.01)))
 
-        self.calculateForwardImpv()
-        self.impvCellDecompose[0].setText('%.2f' % (self.forwardImpv[0] * 100))
-        self.impvCellDecompose[1].setText('%.2f' % (self.forwardImpv[1] * 100))
-        self.impvCellDecompose[2].setText('%.2f' % (self.forwardImpv[2] * 100))
+        if self.underlying.symbol == '510050':
+            self.calculateForwardImpv()
+            self.impvCellDecompose[0].setText('%.2f' % (self.impv[0] * 100))
+            self.impvCellDecompose[1].setText('%.2f' % (self.forwardImpv[0] * 100))
+            self.impvCellDecompose[2].setText('%.2f' % (self.forwardImpv[1] * 100))
+            self.impvCellDecompose[3].setText('%.2f' % (self.forwardImpv[2] * 100))
+
+            self.impvCellDecompose2[0].setText('%.2f' % (self.impv2[0] * 100))
+            self.impvCellDecompose2[1].setText('%.2f' % (self.forwardImpv2[0] * 100))
+            self.impvCellDecompose2[2].setText('%.2f' % (self.forwardImpv2[1] * 100))
+            self.impvCellDecompose2[3].setText('%.2f' % (self.forwardImpv2[2] * 100))
+
+            self.calculateDecomposeGreeks()
+            self.cellDecomposeVega[0].setText('%.0f' % (self.decomposeVega[0]))
+            self.cellDecomposeVega[1].setText('%.0f' % (self.decomposeVega[1]))
+            self.cellDecomposeVega[2].setText('%.0f' % (self.decomposeVega[2]))
+            self.cellDecomposeVega[3].setText('%.0f' % (self.decomposeVega[3]))
+
+        self.callVolumn.setText(str(self.portfolio.callVolume))
+        self.putVolumn.setText(str(self.portfolio.putVolume))
+        self.totalVolumn.setText(str(self.portfolio.callVolume+self.portfolio.putVolume))
+        self.callPosition.setText(str(self.portfolio.callPostion))
+        self.putPosition.setText(str(self.portfolio.putPostion))
+        self.totalPosition.setText(str(self.portfolio.callPostion+self.portfolio.putPostion))
 
 
 # add by lsm 20180117

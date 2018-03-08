@@ -1,0 +1,15 @@
+{
+    "name": "m_portfolio",
+    "model": "black",
+    "underlying": [
+        "m1805"
+    ],     
+    "chain": [
+        {
+            "underlyingSymbol": "m1805",
+            "chainSymbol": "m1805",
+            "futureSymbol":"m1805",
+            "r": 0.03
+        }
+    ]
+}

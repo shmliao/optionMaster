@@ -44,3 +44,39 @@ class OmCell(QtWidgets.QTableWidgetItem):
             self.setFont(QtGui.QFont("Roman times", fontSize))
 
         self.setTextAlignment(QtCore.Qt.AlignCenter)
+
+
+########################################################################
+class OmCellEditText(QtWidgets.QDoubleSpinBox):
+    """单元格"""
+    # ----------------------------------------------------------------------
+    def __init__(self, text=None, kind=None, data=None,key=None):
+        """Constructor"""
+        super(OmCellEditText, self).__init__()
+        if data and key:
+            self.key=key
+            self.data = data
+
+        if kind:
+            if kind=="impv":
+                self.setDecimals(2)
+                self.setMinimum(0)
+                self.setSingleStep(0.01)
+                self.setMaximum(100)
+            elif kind=='volumn':
+                self.setDecimals(0)
+                self.setMinimum(0)
+                self.setMaximum(1000)
+            elif kind=='decimals':
+                self.setDecimals(0)
+                self.setMinimum(-1000000)
+                self.setMaximum(1000000)
+        if text:
+            self.setValue(float(text))
+
+        self.setFixedWidth(200)
+        self.setFont(QtGui.QFont("Roman times", 10))
+
+
+    def test(self,double):
+        print double

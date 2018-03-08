@@ -13,6 +13,7 @@ from .uiOmManualTrader import ManualTrader
 from .uiOmGreeksMonitor import GreeksMonitor
 from .uiOmVolatilityManager import VolatilityChart, VolatilityManager
 from .uiOmAnalysisManager import AnalysisManager
+from vnpy.trader.vtFunction import getJsonPath, getTempPath
 
 
 ########################################################################
@@ -102,13 +103,15 @@ class OmManager(QtWidgets.QWidget):
     #----------------------------------------------------------------------
     def initOmEngine(self):
         """初始化引擎"""
-        path = os.path.abspath(os.path.dirname(__file__))
-        fileName = unicode(self.comboSettingFile.currentText())
-        fileName = os.path.join(path, fileName)
+        # self.fileName = unicode(self.comboSettingFile.currentText())
+        # self.fileName = getJsonPath(self.fileName, __file__)
 
-        print 'uiOmwidgetinitOmEngine'
-        print fileName
-        result = self.omEngine.initEngine(fileName)
+
+        path = os.path.abspath(os.path.dirname(__file__))
+        self.fileName = unicode(self.comboSettingFile.currentText())
+        self.fileName = os.path.join(path, self.fileName)
+
+        result = self.omEngine.initEngine(self.fileName)
         
         if result:
             self.writeLog(u'引擎初始化成功')

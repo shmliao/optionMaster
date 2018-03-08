@@ -7,14 +7,14 @@
     "chain": [
         {
             "underlyingSymbol": "510050", 
-            "chainSymbol": "510050-1802",
-            "futureSymbol":"IH1802",
-            "r": 0.03
-        },
-        {
-            "underlyingSymbol": "510050", 
             "chainSymbol": "510050-1803",
             "futureSymbol":"IH1803",
+            "r": 0.03
+        },
+           {
+            "underlyingSymbol": "510050",
+            "chainSymbol": "510050-1804",
+            "futureSymbol":"IH1804",
             "r": 0.03
         },
         {
