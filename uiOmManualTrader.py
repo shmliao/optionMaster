@@ -7,7 +7,7 @@ from vnpy.trader.vtConstant import DIRECTION_LONG, DIRECTION_SHORT, OFFSET_OPEN,
 from vnpy.trader.vtObject import VtOrderReq
 from vnpy.trader.vtEvent import EVENT_TICK, EVENT_TRADE, EVENT_ORDER, EVENT_TIMER
 from vnpy.trader.uiBasicWidget import WorkingOrderMonitor, BasicMonitor, BasicCell, NameCell, DirectionCell, PnlCell, \
-    AccountMonitor
+    AccountMonitor,NumCell
 from uiOmBase import *
 from omDate import CalendarManager
 
@@ -151,11 +151,17 @@ class NewChainMonitor(QtWidgets.QTableWidget):
             cellAskVolume = OmCell(str(underlying.askVolume1), COLOR_ASK, COLOR_BLACK, underlying, 10)
             cellPos = OmCell(str(underlying.netPos), COLOR_POS, COLOR_BLACK, underlying, 10)
 
+            self.posDict[symbol]= cellPos
+            self.longPosDict[symbol]= OmCell(str(underlying.longPos), COLOR_BID, COLOR_BLACK, underlying, 10)
+            self.shortPosDict[symbol]= OmCell(str(underlying.shortPos), COLOR_BID, COLOR_BLACK, underlying, 10)
+
             self.setItem(row, 0, cellSymbol)
             self.setItem(row, 1, cellBidPrice)
             self.setItem(row, 2, cellBidVolume)
             self.setItem(row, 4, cellAskPrice)
             self.setItem(row, 5, cellAskVolume)
+            self.setItem(row, 12,  self.longPosDict[symbol])
+            self.setItem(row, 13,  self.shortPosDict[symbol])
             self.setItem(row, 14, cellPos)
 
             self.bidPriceDict[symbol] = cellBidPrice
@@ -337,9 +343,14 @@ class NewChainMonitor(QtWidgets.QTableWidget):
         cellAskVolume = OmCell(str(self.future.askVolume1), COLOR_ASK, COLOR_BLACK, self.future, 10)
         cellPos = OmCell(str(self.future.netPos), COLOR_POS, COLOR_BLACK, self.future, 10)
 
+
+        # etf50=self.omEngine.portfolio.underlyingDict[symbol]
+        # self.cellUpsAndDowns=OmCell('%.2f' % ((etf50.lastPrice-etf50.preClosePrice)/etf50.preClosePrice * 100)+"%", COLOR_POS, COLOR_BLACK, etf50, 10)
+
         self.setItem(1, 0, cellSymbol)
         self.setItem(1, 1, cellBidPrice)
         self.setItem(1, 2, cellBidVolume)
+        #self.setItem(1, 3,  self.cellUpsAndDowns)
         self.setItem(1, 4, cellAskPrice)
         self.setItem(1, 5, cellAskVolume)
         self.setItem(1, 14, cellPos)
@@ -397,6 +408,8 @@ class NewChainMonitor(QtWidgets.QTableWidget):
             self.vegaDict[symbol].setText(str(round(option.vega, 4)))
             self.futureDic[symbol].setText(str(round(option.futurePrice, 4)))
 
+        # if symbol==self.future.symbol:
+        #     self.cellUpsAndDowns.setText('%.2f' % ((tick.lastPrice - tick.preClosePrice) / tick.preClosePrice * 100) + "%")
 
         self.bidPriceDict[symbol].setText(self.optionPriceFormat[symbol]  % tick.bidPrice1)
         self.bidVolumeDict[symbol].setText(str(tick.bidVolume1))
@@ -687,6 +700,11 @@ class NewTradingWidget(QtWidgets.QWidget):
         grid.addWidget(self.buttonSendOrder, 5, 0, 1, 2)
         self.setLayout(grid)
 
+    # ----------------------------------------------------------------------根据symbol来查询合约委托量
+    def calcutateOrderBySymbol(self):
+        """根据symbol来查询合约委托量"""
+        return self.mainEngine.calcutateOrderBySymbol()
+
     # ----------------------------------------------------------------------
     def sendOrder(self):
         """发送委托"""
@@ -702,26 +720,40 @@ class NewTradingWidget(QtWidgets.QWidget):
         if not instrument:
             return
 
+        # 获得当前时间各个合约的委托量和委托价格，用来判断平仓量！！
+        longVolumeDic, shortVolumeDic, longPriceDic, shortPriceDic = self.calcutateOrderBySymbol()
         # 做多
         if direction == DIRECTION_LONG:
-            # 如果空头仓位大于等于买入量，则只需平
-            if instrument.shortPos >= volume:
+            # 如果空头仓位减去空头委托量大于等于买入量，则只需平
+            if symbol in shortVolumeDic.keys():
+                orderVolumn = shortVolumeDic[symbol]
+            else:
+                orderVolumn = 0
+            if instrument.shortPos - orderVolumn >= volume:
                 self.fastTrade(symbol, DIRECTION_LONG, OFFSET_CLOSE, price, volume)
             # 否则先平后开
             else:
-                openVolume = volume - instrument.shortPos
-                if instrument.shortPos:
-                    self.fastTrade(symbol, DIRECTION_LONG, OFFSET_CLOSE, price, instrument.shortPos)
+                openVolume = volume - (instrument.shortPos - orderVolumn)
+                if instrument.shortPos - orderVolumn:
+                    self.fastTrade(symbol, DIRECTION_LONG, OFFSET_CLOSE, price, instrument.shortPos - orderVolumn)
                 self.fastTrade(symbol, DIRECTION_LONG, OFFSET_OPEN, price, openVolume)
         # 做空
         else:
-            if instrument.longPos >= volume:
-                self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_CLOSE, price, volume)
+
+            if symbol in longVolumeDic.keys():
+                orderVolumn = longVolumeDic[symbol]
             else:
-                openVolume = volume - instrument.longPos
-                if instrument.longPos:
-                    self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_CLOSE, price, instrument.longPos)
-                self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_OPEN, price, openVolume)
+                orderVolumn = 0
+            if self.shortOpenRadio.isChecked():
+                self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_OPEN, price, volume-orderVolumn)
+            else:
+                if instrument.longPos-orderVolumn >= volume:
+                    self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_CLOSE, price, volume-orderVolumn)
+                else:
+                    openVolume = volume - (instrument.longPos-orderVolumn)
+                    if instrument.longPos-orderVolumn:
+                        self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_CLOSE, price, instrument.longPos-orderVolumn)
+                    self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_OPEN, price, openVolume)
 
     # ----------------------------------------------------------------------
     def fastTrade(self, symbol, direction, offset, price, volume):
@@ -1328,30 +1360,46 @@ class FloatTradingWidget(QtWidgets.QWidget):
         if not instrument:
             return
 
+
+        # 获得当前时间各个合约的委托量和委托价格，用来判断平仓量！！
+        longVolumeDic, shortVolumeDic, longPriceDic, shortPriceDic = self.calcutateOrderBySymbol()
         # 做多
         if direction == DIRECTION_LONG:
-            # 如果空头仓位大于等于买入量，则只需平
-            if instrument.shortPos >= volume:
+            # 如果空头仓位减去空头委托量大于等于买入量，则只需平
+            if symbol in shortVolumeDic.keys():
+                orderVolumn = shortVolumeDic[symbol]
+            else:
+                orderVolumn = 0
+            if instrument.shortPos - orderVolumn >= volume:
                 self.fastTrade(symbol, DIRECTION_LONG, OFFSET_CLOSE, price, volume)
             # 否则先平后开
             else:
-                openVolume = volume - instrument.shortPos
-                if instrument.shortPos:
-                    self.fastTrade(symbol, DIRECTION_LONG, OFFSET_CLOSE, price, instrument.shortPos)
+                openVolume = volume - (instrument.shortPos - orderVolumn)
+                if instrument.shortPos - orderVolumn:
+                    self.fastTrade(symbol, DIRECTION_LONG, OFFSET_CLOSE, price, instrument.shortPos - orderVolumn)
                 self.fastTrade(symbol, DIRECTION_LONG, OFFSET_OPEN, price, openVolume)
         # 做空
         else:
-            if self.shortOpenRadio.isChecked():
-                self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_OPEN, price, volume)
+            if symbol in longVolumeDic.keys():
+                orderVolumn = longVolumeDic[symbol]
             else:
-                if instrument.longPos >= volume:
-                    self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_CLOSE, price, volume)
+                orderVolumn = 0
+            if self.shortOpenRadio.isChecked():
+                self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_OPEN, price, volume-orderVolumn)
+            else:
+                if instrument.longPos-orderVolumn >= volume:
+                    self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_CLOSE, price, volume-orderVolumn)
                 else:
-                    openVolume = volume - instrument.longPos
-                    if instrument.longPos:
-                        self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_CLOSE, price, instrument.longPos)
+                    openVolume = volume - (instrument.longPos-orderVolumn)
+                    if instrument.longPos-orderVolumn:
+                        self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_CLOSE, price, instrument.longPos-orderVolumn)
                     self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_OPEN, price, openVolume)
 
+
+    # ----------------------------------------------------------------------根据symbol来查询合约委托量
+    def calcutateOrderBySymbol(self):
+        """根据symbol来查询合约委托量"""
+        return self.mainEngine.calcutateOrderBySymbol()
     # ----------------------------------------------------------------------
     def fastTrade(self, symbol, direction, offset, price, volume):
         """封装下单函数"""
@@ -1395,8 +1443,8 @@ class FloatTradingWidget(QtWidgets.QWidget):
     # ----------------------------------------------------------------------
     def registerEvent(self, item, symbol):
         """注册事件监听,同时通知页面其他的控件更新"""
-        print "同时通知页面其他的控件更新"
-        print symbol
+        # print "同时通知页面其他的控件更新"
+        # print symbol
         if symbol == self.symbol:
             self.QuickTradeTable.registerEvent(item, item.vtSymbol)
             return
@@ -1641,15 +1689,17 @@ class QuickTradeTable(QtWidgets.QTableWidget):
         self.horizontalHeader().setResizeMode(self.columnCount() - 1, QtWidgets.QHeaderView.ResizeToContents)
 
         # 初始化标的单元格
-        self.bidDict = dict(zip([item.bidPrice1, item.bidPrice2, item.bidPrice3, item.bidPrice4, item.bidPrice5],
-                                [item.bidVolume1, item.bidVolume2, item.bidVolume3, item.bidVolume4, item.bidVolume5]))
-        self.askDict = dict(zip([item.askPrice5, item.askPrice4, item.askPrice3, item.askPrice2, item.askPrice1],
-                                [item.askVolume5, item.askVolume4, item.askVolume3, item.askVolume2, item.askVolume1]))
+        self.bidDict = dict(zip(
+            [str(item.bidPrice1), str(item.bidPrice2), str(item.bidPrice3), str(item.bidPrice4), str(item.bidPrice5)],
+            [item.bidVolume1, item.bidVolume2, item.bidVolume3, item.bidVolume4, item.bidVolume5]))
+        self.askDict = dict(zip(
+            [str(item.askPrice5), str(item.askPrice4), str(item.askPrice3), str(item.askPrice2), str(item.askPrice1)],
+            [item.askVolume5, item.askVolume4, item.askVolume3, item.askVolume2, item.askVolume1]))
 
         self.price = item.lastPrice
 
         for row in range(-30, 30, 1):
-            price = item.lastPrice - row * item.priceTick
+            price = str(item.lastPrice - row * item.priceTick)
             cellPrice = OmCell(str(price), COLOR_BLACK, COLOR_SYMBOL, None, 8)
 
             if price in self.bidDict.keys():
@@ -1707,11 +1757,9 @@ class QuickTradeTable(QtWidgets.QTableWidget):
     def registerEvent(self, item, vtSymbol):
         """注册事件监听"""
         if vtSymbol == self.vtSymbol:
-            print '一样111111111111111111111'
             self.changePriceData(item,True)
             return
         else:
-            print '合约改了'
             self.eventEngine.unregister(EVENT_TICK + self.vtSymbol, self.processTickEvent)
             self.eventEngine.unregister(EVENT_ORDER, self.processOrderEvent)
             self.changePriceData(item,True)
@@ -1781,27 +1829,62 @@ class QuickTradeTable(QtWidgets.QTableWidget):
         # 初始化标的单元格
         if refresh:
             self.price=item.lastPrice
-            print self.price
 
-        self.bidDict = dict(zip([item.bidPrice1, item.bidPrice2, item.bidPrice3, item.bidPrice4, item.bidPrice5],
+        self.bidDict = dict(zip([str(item.bidPrice1), str(item.bidPrice2), str(item.bidPrice3), str(item.bidPrice4), str(item.bidPrice5)],
                                 [item.bidVolume1, item.bidVolume2, item.bidVolume3, item.bidVolume4, item.bidVolume5]))
-        self.askDict = dict(zip([item.askPrice5, item.askPrice4, item.askPrice3, item.askPrice2, item.askPrice1],
+        self.askDict = dict(zip([str(item.askPrice5), str(item.askPrice4), str(item.askPrice3), str(item.askPrice2), str(item.askPrice1)],
                                 [item.askVolume5, item.askVolume4, item.askVolume3, item.askVolume2, item.askVolume1]))
+        #
+        # bidPrice=[item.bidPrice1, item.bidPrice2, item.bidPrice3, item.bidPrice4, item.bidPrice5]
+        # bidVolumn=[item.bidVolume1, item.bidVolume2, item.bidVolume3, item.bidVolume4, item.bidVolume5]
+        # askPrice=[item.askPrice5, item.askPrice4, item.askPrice3, item.askPrice2, item.askPrice1]
+        # askVolumn=[item.askVolume5, item.askVolume4, item.askVolume3, item.askVolume2, item.askVolume1]
+        #
+        # k.index(min(k))
 
         instrument=self.portfolio.instrumentDict[item.symbol]
 
         for row in range(-30, 30, 1):
-            price = self.price - row *instrument.priceTick
+            price = str(round(self.price - row *instrument.priceTick,instrument.remainDecimalPlaces))
             self.cellPriceDict[row + 30].setText(str(price))
+            self.cellBidVolume[row + 30].setText("")
+            self.cellAskVolume[row + 30].setText("")
+
+            # if abs(price-item.bidPrice1)<instrument.priceTick/2:
+            #     self.cellBidVolume[row + 30].setText(str(item.bidVolume1))
+            #     continue
+            # elif abs(price-item.bidPrice2)<instrument.priceTick/2:
+            #     self.cellBidVolume[row + 30].setText(str(item.bidVolume2))
+            #     continue
+            # elif  abs(price - item.bidPrice3) < instrument.priceTick/2:
+            #     self.cellBidVolume[row + 30].setText(str(item.bidVolume3))
+            #     continue
+            # elif abs(price - item.bidPrice4) < instrument.priceTick/2:
+            #     self.cellBidVolume[row + 30].setText(str(item.bidVolume4))
+            #     continue
+            # elif abs(price - item.bidPrice5) < instrument.priceTick/2:
+            #     self.cellBidVolume[row + 30].setText(str(item.bidVolume5))
+            #     continue
+            # elif abs(price - item.askPrice1) < instrument.priceTick/2:
+            #     self.cellAskVolume[row + 30].setText(str(item.askVolume1))
+            #     continue
+            # elif abs(price - item.askPrice2) < instrument.priceTick/2:
+            #     self.cellAskVolume[row + 30].setText(str(item.askVolume2))
+            #     continue
+            # elif abs(price - item.askPrice3) < instrument.priceTick/2:
+            #     self.cellAskVolume[row + 30].setText(str(item.askVolume3))
+            #     continue
+            # elif abs(price - item.askPrice4) < instrument.priceTick/2:
+            #     self.cellAskVolume[row + 30].setText(str(item.askVolume4))
+            #     continue
+            # elif abs(price - item.askPrice5) < instrument.priceTick/2:
+            #     self.cellAskVolume[row + 30].setText(str(item.askVolume5))
+            #     continue
             if price in self.bidDict.keys():
                 self.cellBidVolume[row + 30].setText(str(self.bidDict[price]))
-            else:
-                self.cellBidVolume[row + 30].setText("")
-
-            if price in self.askDict.keys():
+            elif price in self.askDict.keys():
                 self.cellAskVolume[row + 30].setText(str(self.askDict[price]))
-            else:
-                self.cellAskVolume[row + 30].setText("")
+
         self.changeOrderData()
 
     def changeOrderData(self, item=None):
@@ -1865,6 +1948,7 @@ class ManualTrader(QtWidgets.QWidget):
         """初始化界面"""
         self.setWindowTitle(u'手动交易')
         posMonitor = PositionMonitor(self.mainEngine, self.eventEngine)
+        tradeMonitor=TradeMonitor(self.mainEngine, self.eventEngine)
         accountMonitor = AccountMonitor(self.mainEngine, self.eventEngine)
 
         optionAnalysisTable = OptionAnalysisTable(self.omEngine,'position')
@@ -1886,6 +1970,7 @@ class ManualTrader(QtWidgets.QWidget):
         tab2.addTab(optionAnalysisTable, u'greeks汇总')
         tab2.addTab(optionAnalysisTable2, u'行情统计')
         tab2.addTab(posMonitor, u'持仓')
+        tab2.addTab(tradeMonitor, u'成交')
         tab2.addTab(orderMonitor, u'可撤委托')
         tab2.addTab(accountMonitor, u'账户')
         tab2.addTab(calendarManager, u'到期日管理')
@@ -2170,7 +2255,7 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
 
         self.setHorizontalHeaderLabels(self.headers)
 
-        self.setRowCount(6)
+        self.setRowCount(7)
 
         self.verticalHeader().setVisible(False)
         self.setEditTriggers(self.NoEditTriggers)
@@ -2225,6 +2310,30 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.setItem(4, 20, self.callPosition)
         self.setItem(4, 21, self.putPosition)
         self.setItem(4, 22, self.totalPosition)
+
+        self.setItem(5, 17, OmCell(u"权利仓", None, COLOR_POS))
+        self.setItem(5, 18, OmCell(u"义务仓", None, COLOR_POS))
+        self.setItem(5, 19, OmCell(u"总持仓", None, COLOR_POS))
+
+        self.setItem(5, 20, OmCell(u"买成交", None, COLOR_POS))
+        self.setItem(5, 21, OmCell(u"卖成交", None, COLOR_POS))
+        self.setItem(5, 22, OmCell(u"总成交", None, COLOR_POS))
+
+        self.myLongVolumn = OmCell(str(self.portfolio.longPos), None, COLOR_POS)
+        self.myShortVolumn = OmCell(str(self.portfolio.shortPos), None, COLOR_POS)
+        self.myTotalVolumn = OmCell(str(self.portfolio.longPos+self.portfolio.shortPos), None, COLOR_POS)
+
+        self.myLongTrade = OmCell(str(self.portfolio.longTrade+self.mainEngine.dataEngine.longTradedVolumn), None, COLOR_POS)
+        self.myshortTrade = OmCell(str(self.portfolio.shortTrade+self.mainEngine.dataEngine.shortTradedVolumn), None, COLOR_POS)
+        self.myTotalTrade = OmCell(str(self.portfolio.longTrade+self.portfolio.shortTrade+self.mainEngine.dataEngine.longTradedVolumn+self.mainEngine.dataEngine.shortTradedVolumn), None, COLOR_POS)
+
+        self.setItem(6, 17, self.myLongVolumn)
+        self.setItem(6, 18,self.myShortVolumn )
+        self.setItem(6, 19, self.myTotalVolumn)
+
+        self.setItem(6, 20,self.myLongTrade)
+        self.setItem(6, 21,  self.myshortTrade)
+        self.setItem(6, 22, self.myTotalTrade)
 
         for row, chain in enumerate(self.portfolio.chainDict.values()):
             cellDueDate = OmCell(str(chain.optionDict[chain.atTheMoneySymbol].expiryDate), None, COLOR_POS)
@@ -2535,6 +2644,15 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.callPosition.setText(str(self.portfolio.callPostion))
         self.putPosition.setText(str(self.portfolio.putPostion))
         self.totalPosition.setText(str(self.portfolio.callPostion+self.portfolio.putPostion))
+
+
+        self.myLongVolumn.setText(str(self.portfolio.longPos))
+        self.myShortVolumn.setText(str(self.portfolio.shortPos))
+        self.myTotalVolumn.setText(str(self.portfolio.longPos + self.portfolio.shortPos))
+        self.myLongTrade.setText(str(self.portfolio.longTrade+self.mainEngine.dataEngine.longTradedVolumn))
+        self.myshortTrade.setText(str(self.portfolio.shortTrade+self.mainEngine.dataEngine.shortTradedVolumn))
+        self.myTotalTrade.setText(str(self.portfolio.longTrade + self.portfolio.shortTrade+self.mainEngine.dataEngine.longTradedVolumn+self.mainEngine.dataEngine.shortTradedVolumn))
+
 
 
 # add by lsm 20180117
@@ -2910,3 +3028,32 @@ class HeaderSelectWidget(QtWidgets.QWidget):
                 break
         self.manualTrader.showColumn(index, isShow)
 
+
+# add by lsm 20180313
+class TradeMonitor(BasicMonitor):
+    """成交监控"""
+
+    # ----------------------------------------------------------------------
+    def __init__(self, mainEngine, eventEngine, parent=None):
+        """Constructor"""
+        super(TradeMonitor, self).__init__(mainEngine, eventEngine, parent)
+
+        d = OrderedDict()
+        d['tradeID'] = {'chinese': vtText.TRADE_ID, 'cellType': NumCell}
+        d['orderID'] = {'chinese': vtText.ORDER_ID, 'cellType': NumCell}
+        d['symbol'] = {'chinese': vtText.CONTRACT_SYMBOL, 'cellType': BasicCell}
+        d['vtSymbol'] = {'chinese': vtText.CONTRACT_NAME, 'cellType': NameCell}
+        d['direction'] = {'chinese': vtText.DIRECTION, 'cellType': DirectionCell}
+        d['offset'] = {'chinese': vtText.OFFSET, 'cellType': BasicCell}
+        d['price'] = {'chinese': vtText.PRICE, 'cellType': BasicCell}
+        d['volume'] = {'chinese': vtText.VOLUME, 'cellType': BasicCell}
+        d['tradeTime'] = {'chinese': vtText.TRADE_TIME, 'cellType': BasicCell}
+        d['gatewayName'] = {'chinese': vtText.GATEWAY, 'cellType': BasicCell}
+        self.setHeaderDict(d)
+
+        self.setEventType(EVENT_TRADE)
+        self.setFont(BASIC_FONT)
+        self.setSorting(True)
+
+        self.initTable()
+        self.registerEvent()

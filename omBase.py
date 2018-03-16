@@ -12,6 +12,7 @@ from vnpy.trader.vtEvent import EVENT_TIMER, EVENT_TRADE, EVENT_ORDER
 from .omDate import getTimeToMaturity,ANNUAL_TRADINGDAYS
 from math import (log, pow, sqrt, exp)
 import time
+
 # 常量定义
 CALL = 1
 PUT = -1
@@ -55,6 +56,10 @@ class OmInstrument(VtTickData):
         self.shortPos = 0
         self.netPos = 0
 
+        # 交易数据
+        self.longTrade = 0
+        self.shortTrade = 0
+
         if detail:
             self.longPos = detail.longPos
             self.shortPos = detail.shortPos
@@ -65,6 +70,7 @@ class OmInstrument(VtTickData):
         if not self.tickInited:
             self.date = tick.date
             self.openPrice = tick.openPrice
+            self.preClosePrice=tick.preClosePrice
             self.upperLimit = tick.upperLimit
             self.lowerLimit = tick.lowerLimit
             self.tickInited = True
@@ -104,11 +110,13 @@ class OmInstrument(VtTickData):
     def newTrade(self, trade):
         """成交更新"""
         if trade.direction is DIRECTION_LONG:
+            self.longTrade+= trade.volume
             if trade.offset is OFFSET_OPEN:
                 self.longPos += trade.volume
             else:
                 self.shortPos -= trade.volume
         else:
+            self.shortTrade+= trade.volume
             if trade.offset is OFFSET_OPEN:
                 self.shortPos += trade.volume
             else:
@@ -362,7 +370,7 @@ class OmOption(OmInstrument):
     def newTrade(self, trade):
         """成交更新"""
         super(OmOption, self).newTrade(trade)
-        self.calculatePosGreeks()
+        #self.calculatePosGreeks()
 
     #----------------------------------------------------------------------
     def setUnderlying(self, underlying):
@@ -436,6 +444,9 @@ class OmChain(object):
         self.shortPos = EMPTY_INT
         self.netPos = EMPTY_INT
 
+        self.longTrade=EMPTY_INT
+        self.shortTrade = EMPTY_INT
+
         self.posValue = EMPTY_FLOAT
         self.posDelta = EMPTY_FLOAT
         self.posGamma = EMPTY_FLOAT
@@ -459,6 +470,10 @@ class OmChain(object):
         self.longPos = 0
         self.shortPos = 0
         self.netPos = 0
+
+        self.longTrade = 0
+        self.shortTrade = 0
+
         self.posDelta = 0
         self.posGamma = 0
         self.posTheta = 0
@@ -481,6 +496,9 @@ class OmChain(object):
             self.longPos += option.longPos
             self.shortPos += option.shortPos
 
+            self.longTrade += option.longTrade
+            self.shortTrade  += option.shortTrade
+
             self.posValue += option.posValue
             self.posDelta += option.posDelta
             self.posGamma += option.posGamma
@@ -498,6 +516,9 @@ class OmChain(object):
         for option in self.putDict.values():
             self.longPos += option.longPos
             self.shortPos += option.shortPos
+
+            self.longTrade += option.longTrade
+            self.shortTrade += option.shortTrade
 
             self.posValue += option.posValue
             self.posDelta += option.posDelta
@@ -757,28 +778,28 @@ class OmChain(object):
         option = self.optionDict[trade.symbol]
 
         # 缓存旧数据
-        oldLongPos = option.longPos
-        oldShortPos = option.shortPos
-
-        oldPosValue = option.posValue
-        oldPosDelta = option.posDelta
-        oldPosGamma = option.posGamma
-        oldPosTheta = option.posTheta
-        oldPosVega = option.posVega
+        # oldLongPos = option.longPos
+        # oldShortPos = option.shortPos
+        #
+        # oldPosValue = option.posValue
+        # oldPosDelta = option.posDelta
+        # oldPosGamma = option.posGamma
+        # oldPosTheta = option.posTheta
+        # oldPosVega = option.posVega
 
         # 更新到期权s中
         option.newTrade(trade)
 
-        # 计算持仓希腊值
-        self.longPos = self.longPos - oldLongPos + option.longPos
-        self.shortPos = self.shortPos - oldShortPos+ option.shortPos
-        self.netPos = self.longPos - self.shortPos
-
-        self.posValue = self.posValue - oldPosValue + option.posValue
-        self.posDelta = self.posDelta - oldPosDelta + option.posDelta
-        self.posGamma = self.posGamma - oldPosGamma + option.posGamma
-        self.posTheta = self.posTheta - oldPosTheta + option.posTheta
-        self.posVega = self.posVega - oldPosVega + option.posVega
+        # # 计算持仓希腊值
+        # self.longPos = self.longPos - oldLongPos + option.longPos
+        # self.shortPos = self.shortPos - oldShortPos+ option.shortPos
+        # self.netPos = self.longPos - self.shortPos
+        #
+        # self.posValue = self.posValue - oldPosValue + option.posValue
+        # self.posDelta = self.posDelta - oldPosDelta + option.posDelta
+        # self.posGamma = self.posGamma - oldPosGamma + option.posGamma
+        # self.posTheta = self.posTheta - oldPosTheta + option.posTheta
+        # self.posVega = self.posVega - oldPosVega + option.posVega
 
     def calculateDueTime(self,nowTime,symbol):
         hours = time.localtime(nowTime)[3]
@@ -857,6 +878,9 @@ class OmPortfolio(object):
         self.shortPos = EMPTY_INT
         self.netPos = EMPTY_INT
 
+        self.longTrade = EMPTY_INT
+        self.shortTrade = EMPTY_INT
+
         self.posValue = EMPTY_FLOAT
         self.posDelta = EMPTY_FLOAT
         self.posGamma = EMPTY_FLOAT
@@ -875,6 +899,9 @@ class OmPortfolio(object):
         self.longPos = 0
         self.shortPos = 0
         self.netPos = 0
+
+        self.longTrade = 0
+        self.shortTrade = 0
 
         self.posValue = 0
         self.posDelta = 0
@@ -898,6 +925,9 @@ class OmPortfolio(object):
         for chain in self.chainDict.values():
             self.longPos += chain.longPos
             self.shortPos += chain.shortPos
+
+            self.longTrade  += chain.longTrade
+            self.shortTrade  += chain.shortTrade
 
             self.posValue += chain.posValue
             self.posDelta += chain.posDelta
@@ -949,8 +979,8 @@ class OmPortfolio(object):
         if symbol in self.optionDict:
             chain = self.optionDict[symbol].chain
             chain.newTrade(trade)
-            self.calculatePosGreeks()
+            #self.calculatePosGreeks()
         elif symbol in self.underlyingDict:
             underlying = self.underlyingDict[symbol]
             underlying.newTrade(trade)
-            self.calculatePosGreeks()
+            #self.calculatePosGreeks()

@@ -203,7 +203,7 @@ class OmEngine(object):
             self.subscribeEvent(underlying.vtSymbol)
 
         for chain in chainList:
-            # self.subscribeEvent(chain.future.vtSymbol)
+            self.subscribeEvent(chain.future.vtSymbol)
             for option in chain.optionDict.values():
                 self.subscribeEvent(option.vtSymbol)
         

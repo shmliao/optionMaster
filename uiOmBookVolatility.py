@@ -369,36 +369,35 @@ class BookChainMonitor(QtWidgets.QTableWidget):
         elif symbol in self.chain.putDict.keys():
             putOrCall =OPTION_PUT
         #判断delta：
-        if self.riskOfGreeksWidget.greeksSwitch['delta']=="on":
-            if self.riskOfGreeksWidget.upGreeksSwitch['delta'] == 'on':
+        if self.riskOfGreeksWidget.greeksSwitch['delta']=="on" and self.riskOfGreeksWidget.greeksSwitch['delta'+self.chain.symbol]=="on":
+            if self.riskOfGreeksWidget.upGreeksSwitch['delta'] == 'off':
                 if (putOrCall==OPTION_CALL and direct==DIRECTION_LONG) or (putOrCall==OPTION_PUT and direct==DIRECTION_SHORT):
-                    print  "如果突破上限，所有delta增大的交易关闭"
+                    print  "如果没有开启delta增报单，所有delta增大的交易关闭"
                     return False
-            elif self.riskOfGreeksWidget.downGreeksSwitch['delta'] == 'on':
+            elif self.riskOfGreeksWidget.downGreeksSwitch['delta'] == 'off':
                 if (putOrCall==OPTION_CALL and direct==DIRECTION_SHORT) or (putOrCall==OPTION_PUT and direct==DIRECTION_LONG):
-                    print  "如果突破下限，所有delta减小的交易关闭"
+                    print  "如果没有开启delta减报单，所有delta减小的交易关闭"
                     return False
 
         # 判断gamma：
-        if self.riskOfGreeksWidget.greeksSwitch['gamma'] == "on":
-            if self.riskOfGreeksWidget.upGreeksSwitch['gamma'] == 'on':
+        if self.riskOfGreeksWidget.greeksSwitch['gamma'] == "on" and self.riskOfGreeksWidget.greeksSwitch['gamma'+self.chain.symbol]=="on":
+            if self.riskOfGreeksWidget.upGreeksSwitch['gamma'] == 'off':
                 if direct == DIRECTION_LONG:
-                    print "如果突破上限，所有gamma增大的交易关闭"
+                    print "如果没有开启gamma增报单，所有gamma增大的交易关闭"
                     return False
-            elif self.riskOfGreeksWidget.downGreeksSwitch['gamma'] == 'on':
+            elif self.riskOfGreeksWidget.downGreeksSwitch['gamma'] == 'off':
                 if direct ==DIRECTION_SHORT:
-                    print "如果突破下限，所有gamma减小的交易关闭"
+                    print "如果没有开启gamma减报单，所有gamma减小的交易关闭"
                     return False
         # 判断vega：
-        if self.riskOfGreeksWidget.greeksSwitch['vega'] == "on":
-            if self.riskOfGreeksWidget.upGreeksSwitch['vega'] == 'on':
+        if self.riskOfGreeksWidget.greeksSwitch['vega'] == "on"  and self.riskOfGreeksWidget.greeksSwitch['vega'+self.chain.symbol]=="on":
+            if self.riskOfGreeksWidget.upGreeksSwitch['vega'] == 'off':
                 if direct == DIRECTION_LONG:
-                    print "如果突破上限，所有vega增大的交易关闭"
-
+                    print "如果没有开启vega增报单，所有vega增大的交易关闭"
                     return False
-            elif self.riskOfGreeksWidget.downGreeksSwitch['vega'] == 'on':
+            elif self.riskOfGreeksWidget.downGreeksSwitch['vega'] == 'off':
                 if direct == DIRECTION_SHORT:
-                    print "如果突破下限，所有delta减小的交易关闭"
+                    print "如果没有开启vega减报单，所有delta减小的交易关闭"
                     return False
         return True
 
@@ -709,12 +708,18 @@ class BookChainMonitor(QtWidgets.QTableWidget):
             self.eventEngine.register(EVENT_TICK + option.vtSymbol, self.signalTick.emit)
             self.eventEngine.register(EVENT_TRADE + option.vtSymbol, self.signalTrade.emit)
 
+        self.eventEngine.register(EVENT_TICK + self.chain.underlying.vtSymbol, self.signalTick.emit)
+
+
 
     # ----------------------------------------------------------------------
     def processTickEvent(self, event):
         """行情更新"""
         tick = event.dict_['data']
         symbol = tick.symbol
+
+        if symbol==self.chain.underlying.symbol:
+            return
 
         if symbol in self.cellBidImpv:
             option = self.instrumentDict[symbol]
@@ -830,6 +835,9 @@ class BookVolatility(QtWidgets.QWidget):
         #卖逻辑：卖开，卖平
         self.shortDirection=OFFSET_OPEN
 
+        #是否开启现货对冲
+        self.underlyingHedging=False
+
         self.tradingWidget = {}
         self.chainMonitorAarry = []
         self.bookImpvConfig = {}
@@ -864,12 +872,18 @@ class BookVolatility(QtWidgets.QWidget):
         checkBox.setFixedWidth(120)
         checkBox.clicked.connect(self.changeMasterControl)
 
+        underlyingHedgingCheckBox = QtWidgets.QCheckBox(u'现货对冲')
+        underlyingHedgingCheckBox.setChecked(self.underlyingHedging)
+        underlyingHedgingCheckBox.setFixedWidth(120)
+        underlyingHedgingCheckBox.clicked.connect(self.changeUnderlyingHedging)
+
 
         btnRestore = QtWidgets.QPushButton(u'数据还原')
         btnRestore.setFixedWidth(100)
         btnRestore.clicked.connect(self.dataRestore)
 
         vhboxButtons.addWidget(checkBox)
+        vhboxButtons.addWidget(underlyingHedgingCheckBox)
         vhboxButtons.addWidget(btnRestore)
         vhboxButtons.addStretch()
 
@@ -990,9 +1004,6 @@ class BookVolatility(QtWidgets.QWidget):
         print OFFSET_CLOSE
         self.shortDirection=OFFSET_CLOSE
 
-    def test(self):
-        print 2
-
     def changeMasterControl(self, isChecked):
         print "masterSwitch"
         print isChecked
@@ -1000,6 +1011,10 @@ class BookVolatility(QtWidgets.QWidget):
         if not isChecked:
             self.cancelAll()
             print "全撤成功"
+
+    def changeUnderlyingHedging(self, isChecked):
+        self.underlyingHedging=isChecked
+
 
     def cancelAll(self):
         """一键撤销所有委托"""
@@ -1101,6 +1116,14 @@ class RiskOfGreeksWidget(QtWidgets.QTableWidget):
         self.cellUpDeviationValue={}
         self.cellGreeksSwitch={}
 
+        for chainkey in self.omEngine.portfolio.chainDict.keys():
+            self.headers.append(chainkey)
+
+        for row, underlying in enumerate(self.omEngine.portfolio.underlyingDict.values()):
+            self.underlying = underlying
+            self.eventEngine.register(EVENT_TICK + underlying.vtSymbol, self.processTickEvent)
+            break
+
         # 希腊值总开关,on off 按钮!默认不控制
         self.deltaControl=False
         self.gammaControl = False
@@ -1112,39 +1135,96 @@ class RiskOfGreeksWidget(QtWidgets.QTableWidget):
         self.greeksSwitch['gamma'] = 'off'
         self.greeksSwitch['vega'] = 'off'
 
-        # Greeks 如果当前的greeks大于设置的最大值,那么控制开启设置为on
+        # Greeks on，交易，off，不交易
         self.upGreeksSwitch = {}
-        self.upGreeksSwitch['delta'] = 'off'
-        self.upGreeksSwitch['gamma'] = 'off'
-        self.upGreeksSwitch['vega'] = 'off'
+        self.upGreeksSwitch['delta'] = 'on'
+        self.upGreeksSwitch['gamma'] = 'on'
+        self.upGreeksSwitch['vega'] = 'on'
 
-        # Greeks 如果当前的greeks小于设置的最小值,那么控制开启设置为on
+        # Greeks on，交易，off，不交易
         self.downGreeksSwitch = {}
-        self.downGreeksSwitch['delta'] = 'off'
-        self.downGreeksSwitch['gamma'] = 'off'
-        self.downGreeksSwitch['vega'] = 'off'
+        self.downGreeksSwitch['delta'] = 'on'
+        self.downGreeksSwitch['gamma'] = 'on'
+        self.downGreeksSwitch['vega'] = 'on'
 
-        # 下限偏移量
+        # 最小值
         self.downDeviationValue={}
         self.downDeviationValue['delta'] = 0
         self.downDeviationValue['gamma'] = 0
         self.downDeviationValue['vega'] = 0
-        # 下限目标值
+        # 目标值
         self.targetValue={}
         self.targetValue['delta'] = 0
         self.targetValue['gamma'] = 0
         self.targetValue['vega'] = 0
 
-        #  上限偏移量
+        #  最大值
         self.upDeviationValue = {}
         self.upDeviationValue['delta'] = 0
         self.upDeviationValue['gamma'] = 0
         self.upDeviationValue['vega'] = 0
 
+        self.posDelta=self.portfolio.posDelta+self.underlying.netPos * self.underlying.lastPrice * 0.01
+
         self.initUi()
         self.itemClicked.connect(self.switchDownAndUp)
         self.eventEngine.register(EVENT_TIMER, self.timingChange)
 
+    # ----------------------------------------------------------------------
+    #现货或者标的物行情返回，用于现货对冲判断!
+    def processTickEvent(self, event):
+        """行情更新，价格列表,五档数据"""
+        tick = event.dict_['data']
+        if not self.parentWidget.underlyingHedging or not self.parentWidget.masterSwitch:
+            print '现货对冲没开或者没开启波动率报单'
+            return
+
+        # 单向delta减报单
+        if self.greeksSwitch['delta'] == 'on' and self.upGreeksSwitch['delta'] == 'off' and self.downGreeksSwitch['delta'] == 'on':
+            # 获得当前时间各个合约的委托量和委托价格，用来判断是否还需要继续发送委托和撤单！！
+            longVolumeDic, shortVolumeDic, longPriceDic, shortPriceDic = self.calcutateOrderBySymbol()
+            if tick.symbol in longVolumeDic.keys() or tick.symbol in shortVolumeDic.keys():
+                print '目前现货有未成交的委托'
+                return
+
+            req = VtOrderReq()
+            contract = self.mainEngine.getContract(tick.vtSymbol)
+            req.symbol = tick.symbol
+            req.exchange = contract.exchange
+            req.vtSymbol = tick.vtSymbol
+            req.price = tick.bidPrice1
+            req.volume = contract.size
+            req.direction = DIRECTION_SHORT
+            req.priceType = PRICETYPE_LIMITPRICE
+            req.offset = OFFSET_OPEN
+            self.mainEngine.sendOrder(req, contract.gatewayName)
+
+        # 单向delta增报单
+        elif self.greeksSwitch['delta'] == 'on' and self.upGreeksSwitch['delta'] == 'on' and self.downGreeksSwitch['delta'] == 'off':
+            # 获得当前时间各个合约的委托量和委托价格，用来判断是否还需要继续发送委托和撤单！！
+            longVolumeDic, shortVolumeDic, longPriceDic, shortPriceDic = self.calcutateOrderBySymbol()
+            if tick.symbol in longVolumeDic.keys() or tick.symbol in shortVolumeDic.keys():
+                print '目前现货有未成交的委托'
+                return
+            req = VtOrderReq()
+            contract = self.mainEngine.getContract(tick.vtSymbol)
+            req.symbol = tick.symbol
+            req.exchange = contract.exchange
+            req.vtSymbol = tick.vtSymbol
+            req.price = tick.askPrice1
+            req.volume =  contract.size
+            req.direction = DIRECTION_LONG
+            req.priceType = PRICETYPE_LIMITPRICE
+            req.offset = OFFSET_OPEN
+            self.mainEngine.sendOrder(req, contract.gatewayName)
+
+
+
+
+    # ----------------------------------------------------------------------根据symbol来查询合约委托量
+    def calcutateOrderBySymbol(self):
+        """根据symbol来查询合约委托量"""
+        return self.mainEngine.calcutateOrderBySymbol()
 
     def switchDownAndUp(self,item):
         if item in self.cellGreeksSwitch.values():
@@ -1154,49 +1234,110 @@ class RiskOfGreeksWidget(QtWidgets.QTableWidget):
                 self.greeksSwitch[item.data]='off'
             item.setText(self.greeksSwitch[item.data])
 
-            print self.greeksSwitch[item.data]
-
     def timingChange(self,event):
+        self.posDelta = self.portfolio.posDelta + self.underlying.netPos * self.underlying.lastPrice * 0.01
         if self.greeksSwitch['delta'] == 'on':
-            if self.portfolio.posDelta>self.targetValue['delta']+self.upDeviationValue['delta']:
-                self.upGreeksSwitch['delta']='on'
-                self.downGreeksSwitch['delta'] = 'off'
-            elif self.portfolio.posDelta<self.targetValue['delta']-self.downDeviationValue['delta']:
-                self.upGreeksSwitch['delta'] = 'off'
-                self.downGreeksSwitch['delta'] = 'on'
-            else:
-                self.upGreeksSwitch['delta'] = 'off'
-                self.downGreeksSwitch['delta'] = 'off'
+            #如果之前是单向delta减报单
+            if  self.upGreeksSwitch['delta']=='off' and self.downGreeksSwitch['delta'] == 'on':
+                #实时delta变化到目标值和最小值之间，开启双向报单
+                if self.downDeviationValue['delta']<self.posDelta<self.targetValue['delta']:
+                    self.upGreeksSwitch['delta'] == 'on'
+                    self.downGreeksSwitch['delta'] = 'on'
+                #实时delta小于最小值,单向增报单
+                elif self.posDelta<self.downDeviationValue['delta']:
+                    self.upGreeksSwitch['delta'] == 'on'
+                    self.downGreeksSwitch['delta'] = 'off'
+            # 如果之前是单向delta增报单
+            elif self.upGreeksSwitch['delta'] == 'on' and self.downGreeksSwitch['delta'] == 'off':
+                # 实时delta变化到目标值和最大值之间，开启双向报单
+                if self.upDeviationValue['delta'] > self.posDelta > self.targetValue['delta']:
+                    self.upGreeksSwitch['delta'] == 'on'
+                    self.downGreeksSwitch['delta'] = 'on'
+                # 实时delta大于最大值,单向减报单
+                elif self.posDelta > self.upDeviationValue['delta']:
+                    self.upGreeksSwitch['delta'] == 'off'
+                    self.downGreeksSwitch['delta'] = 'on'
+            # 如果之前是双向报单
+            elif self.upGreeksSwitch['delta'] == 'on' and self.downGreeksSwitch['delta'] == 'on':
+                # 实时delta大于最大值,单向减报单
+                if self.posDelta>self.targetValue['delta'] :
+                    self.upGreeksSwitch['delta'] == 'off'
+                    self.downGreeksSwitch['delta'] = 'on'
+                # 实时delta小于最小值,单向增报单
+                elif self.posDelta < self.downDeviationValue['delta']:
+                    self.upGreeksSwitch['delta'] == 'on'
+                    self.downGreeksSwitch['delta'] = 'off'
 
         if self.greeksSwitch['gamma'] == 'on':
-            if self.portfolio.posGamma>self.targetValue['gamma']+self.upDeviationValue['gamma']:
-                self.upGreeksSwitch['gamma']='on'
-                self.downGreeksSwitch['gamma'] = 'off'
-            elif self.portfolio.posGamma<self.targetValue['gamma']-self.downDeviationValue['gamma']:
-                self.upGreeksSwitch['gamma'] = 'off'
-                self.downGreeksSwitch['gamma'] = 'on'
-            else:
-                self.upGreeksSwitch['gamma'] = 'off'
-                self.downGreeksSwitch['gamma'] = 'off'
+            # 如果之前是单向gamma减报单
+            if self.upGreeksSwitch['gamma'] == 'off' and self.downGreeksSwitch['gamma'] == 'on':
+                # 实时gamma变化到目标值和最小值之间，开启双向报单
+                if self.downDeviationValue['gamma'] < self.portfolio.posgamma < self.targetValue['gamma']:
+                    self.upGreeksSwitch['gamma'] == 'on'
+                    self.downGreeksSwitch['gamma'] = 'on'
+                # 实时gamma小于最小值,单向增报单
+                elif self.portfolio.posgamma < self.downDeviationValue['gamma']:
+                    self.upGreeksSwitch['gamma'] == 'on'
+                    self.downGreeksSwitch['gamma'] = 'off'
+            # 如果之前是单向gamma增报单
+            elif self.upGreeksSwitch['gamma'] == 'on' and self.downGreeksSwitch['gamma'] == 'off':
+                # 实时gamma变化到目标值和最大值之间，开启双向报单
+                if self.upDeviationValue['gamma'] > self.portfolio.posgamma >  self.targetValue['gamma']:
+                    self.upGreeksSwitch['gamma'] == 'on'
+                    self.downGreeksSwitch['gamma'] = 'on'
+                # 实时gamma大于最大值,单向减报单
+                elif self.portfolio.posgamma >self.upDeviationValue['gamma']:
+                    self.upGreeksSwitch['gamma'] == 'off'
+                    self.downGreeksSwitch['gamma'] = 'on'
+            # 如果之前是双向报单
+            elif self.upGreeksSwitch['gamma'] == 'on' and self.downGreeksSwitch['gamma'] == 'on':
+                # 实时gamma大于最大值,单向减报单
+                if self.portfolio.posgamma > self.upDeviationValue['gamma']:
+                    self.upGreeksSwitch['gamma'] == 'off'
+                    self.downGreeksSwitch['gamma'] = 'on'
+                # 实时gamma小于最小值,单向增报单
+                elif self.portfolio.posgamma <  self.downDeviationValue['gamma']:
+                    self.upGreeksSwitch['gamma'] == 'on'
+                    self.downGreeksSwitch['gamma'] = 'off'
 
         if self.greeksSwitch['vega'] == 'on':
-            if self.portfolio.posVega>self.targetValue['vega']+self.upDeviationValue['vega']:
-                self.upGreeksSwitch['vega']='on'
-                self.downGreeksSwitch['vega'] = 'off'
-            elif self.portfolio.posVega<self.targetValue['vega']-self.downDeviationValue['vega']:
-                self.upGreeksSwitch['vega'] = 'off'
-                self.downGreeksSwitch['vega'] = 'on'
-            else:
-                self.upGreeksSwitch['vega'] = 'off'
-                self.downGreeksSwitch['vega'] = 'off'
-
+            # 如果之前是单向vega减报单
+            if self.upGreeksSwitch['vega'] == 'off' and self.downGreeksSwitch['vega'] == 'on':
+                # 实时vega变化到目标值和最小值之间，开启双向报单
+                if self.downDeviationValue['vega'] < self.portfolio.posvega < self.targetValue['vega']:
+                    self.upGreeksSwitch['vega'] == 'on'
+                    self.downGreeksSwitch['vega'] = 'on'
+                # 实时vega小于最小值,单向增报单
+                elif self.portfolio.posvega < self.downDeviationValue['vega']:
+                    self.upGreeksSwitch['vega'] == 'on'
+                    self.downGreeksSwitch['vega'] = 'off'
+            # 如果之前是单向vega增报单
+            elif self.upGreeksSwitch['vega'] == 'on' and self.downGreeksSwitch['vega'] == 'off':
+                # 实时vega变化到目标值和最大值之间，开启双向报单
+                if self.upDeviationValue['vega'] > self.portfolio.posvega > self.targetValue['vega']:
+                    self.upGreeksSwitch['vega'] == 'on'
+                    self.downGreeksSwitch['vega'] = 'on'
+                # 实时vega大于最大值,单向减报单
+                elif self.portfolio.posvega > self.upDeviationValue['vega']:
+                    self.upGreeksSwitch['vega'] == 'off'
+                    self.downGreeksSwitch['vega'] = 'on'
+            # 如果之前是双向报单
+            elif self.upGreeksSwitch['vega'] == 'on' and self.downGreeksSwitch['vega'] == 'on':
+                # 实时vega大于最大值,单向减报单
+                if self.portfolio.posvega >  self.upDeviationValue['vega']:
+                    self.upGreeksSwitch['vega'] == 'off'
+                    self.downGreeksSwitch['vega'] = 'on'
+                # 实时vega小于最小值,单向增报单
+                elif self.portfolio.posvega < self.downDeviationValue['vega']:
+                    self.upGreeksSwitch['vega'] == 'on'
+                    self.downGreeksSwitch['vega'] = 'off'
 
         self.parentWidget.deltaControl = self.deltaControl
         self.parentWidget.gammaControl = self.gammaControl
         self.parentWidget.vegaControl = self.vegaControl
 
         self.totalCellGamma.setText(str(self.portfolio.posGamma))
-        self.totalCellDelta.setText(str(self.portfolio.posDelta))
+        self.totalCellDelta.setText(str(self.posDelta))
         self.totalCellVega.setText(str(self.portfolio.posVega))
 
     def initUi(self):
@@ -1215,7 +1356,7 @@ class RiskOfGreeksWidget(QtWidgets.QTableWidget):
         self.setItem(2, 0, OmCell(u"vega", None, COLOR_POS))
 
         self.totalCellGamma = OmCell(str(self.portfolio.posGamma), None, COLOR_POS)
-        self.totalCellDelta= OmCell(str(self.portfolio.posDelta), None, COLOR_POS)
+        self.totalCellDelta= OmCell(str(self.posDelta), None, COLOR_POS)
         self.totalCellVega = OmCell(str(self.portfolio.posVega), None, COLOR_POS)
 
         self.setItem(0, 1, self.totalCellDelta)
@@ -1252,6 +1393,18 @@ class RiskOfGreeksWidget(QtWidgets.QTableWidget):
         self.setCellWidget(1, 5, self.cellUpDeviationValue['gamma'] )
         self.setCellWidget(2, 5, self.cellUpDeviationValue['vega'] )
 
+        for row,chain in enumerate(self.omEngine.portfolio.chainDict.values()):
+            self.greeksSwitch['delta' + chain.symbol]='off'
+            self.greeksSwitch['gamma' + chain.symbol]='off'
+            self.greeksSwitch['vega' + chain.symbol]='off'
+
+            self.cellGreeksSwitch["delta"+chain.symbol] = OmCell(self.greeksSwitch['delta'+chain.symbol], None, COLOR_POS, 'delta'+chain.symbol)
+            self.cellGreeksSwitch["gamma"+chain.symbol] = OmCell(self.greeksSwitch['gamma'+chain.symbol], None, COLOR_POS, 'gamma'+chain.symbol)
+            self.cellGreeksSwitch["vega"+chain.symbol] = OmCell(self.greeksSwitch['vega'+chain.symbol], None, COLOR_POS, 'vega'+chain.symbol)
+            self.setItem(0, 6+row, self.cellGreeksSwitch["delta"+chain.symbol])
+            self.setItem(1, 6+row, self.cellGreeksSwitch["gamma"+chain.symbol])
+            self.setItem(2, 6+row, self.cellGreeksSwitch["vega"+chain.symbol])
+
 
         for key,value in self.cellDownDeviationValue.items():
             self.cellDownDeviationValue[key].valueChanged.connect(self.modifyConfig)
@@ -1263,27 +1416,27 @@ class RiskOfGreeksWidget(QtWidgets.QTableWidget):
         editText.data[editText.key]=double
 
         if editText.key=='delta':
-            positionTarget=self.portfolio.posDelta
+            positionTarget=self.posDelta
         elif editText.key=='gamma':
             positionTarget = self.portfolio.posGamma
         else:
             positionTarget = self.portfolio.posVega
 
 
-        if positionTarget>self.targetValue[editText.key]+self.upDeviationValue[editText.key]:
+        if positionTarget>self.upDeviationValue[editText.key]:
             print editText.key
             print '突破上限了'
-            self.upGreeksSwitch[editText.key]='on'
-            self.downGreeksSwitch[editText.key] = 'off'
-        elif positionTarget<self.targetValue[editText.key]-self.downDeviationValue[editText.key]:
+            self.upGreeksSwitch[editText.key]='off'
+            self.downGreeksSwitch[editText.key] = 'on'
+        elif positionTarget<self.downDeviationValue[editText.key]:
             print editText.key
             print '跌破下限了'
-            self.upGreeksSwitch[editText.key] = 'off'
-            self.downGreeksSwitch[editText.key] = 'on'
+            self.upGreeksSwitch[editText.key] = 'on'
+            self.downGreeksSwitch[editText.key] = 'off'
         else:
             print editText.key
             print '在中间'
-            self.upGreeksSwitch[editText.key] = 'off'
-            self.downGreeksSwitch[editText.key] = 'off'
+            self.upGreeksSwitch[editText.key] = 'on'
+            self.downGreeksSwitch[editText.key] = 'on'
 
 

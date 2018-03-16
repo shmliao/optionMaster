@@ -8,25 +8,25 @@
         {
             "underlyingSymbol": "510050", 
             "chainSymbol": "510050-1803",
-            "futureSymbol":"IH1803",
+            "futureSymbol":"510050",
             "r": 0.03
         },
            {
             "underlyingSymbol": "510050",
             "chainSymbol": "510050-1804",
-            "futureSymbol":"IH1804",
+            "futureSymbol":"510050",
             "r": 0.03
         },
         {
             "underlyingSymbol": "510050", 
             "chainSymbol": "510050-1806",
-            "futureSymbol":"IH1806",
+            "futureSymbol":"510050",
             "r": 0.03
         },
         {
             "underlyingSymbol": "510050",
             "chainSymbol": "510050-1809",
-            "futureSymbol":"IH1809",
+            "futureSymbol":"510050",
             "r": 0.03
         }
     ]
