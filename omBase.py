@@ -39,6 +39,7 @@ class OmInstrument(VtTickData):
 
         self.size = contract.size
         self.priceTick = contract.priceTick
+        self.productClass=contract.productClass
 
         # 小数点位数保留
         self.remainDecimalPlaces=int(len(str(self.priceTick)))-2
@@ -185,7 +186,7 @@ class OmUnderlying(OmInstrument):
     #----------------------------------------------------------------------
     def calculatePosGreeks(self):
         """计算持仓希腊值"""
-        self.posDelta = self.theoDelta * self.netPos
+        self.posDelta = int(self.theoDelta * self.netPos)
 
 
 ########################################################################
@@ -920,6 +921,7 @@ class OmPortfolio(object):
         self.putPostion = 0
 
         for underlying in self.underlyingDict.values():
+            underlying.calculatePosGreeks()
             self.posDelta += underlying.posDelta
 
         for chain in self.chainDict.values():

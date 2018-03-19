@@ -3,7 +3,7 @@
 from vnpy.event import Event
 from uiOmVolatilityManager import VolatilityChart
 
-from vnpy.trader.vtConstant import DIRECTION_LONG, DIRECTION_SHORT, OFFSET_OPEN, OFFSET_CLOSE, PRICETYPE_LIMITPRICE
+from vnpy.trader.vtConstant import DIRECTION_LONG, DIRECTION_SHORT, OFFSET_OPEN, OFFSET_CLOSE, PRICETYPE_LIMITPRICE,PRODUCT_OPTION
 from vnpy.trader.vtObject import VtOrderReq
 from vnpy.trader.vtEvent import EVENT_TICK, EVENT_TRADE, EVENT_ORDER, EVENT_TIMER
 from vnpy.trader.uiBasicWidget import WorkingOrderMonitor, BasicMonitor, BasicCell, NameCell, DirectionCell, PnlCell, \
@@ -1360,6 +1360,10 @@ class FloatTradingWidget(QtWidgets.QWidget):
         if not instrument:
             return
 
+        #如果不是期权
+        if instrument.productClass<>PRODUCT_OPTION:
+            self.fastTrade(symbol, direction, OFFSET_OPEN, price, volume)
+            return
 
         # 获得当前时间各个合约的委托量和委托价格，用来判断平仓量！！
         longVolumeDic, shortVolumeDic, longPriceDic, shortPriceDic = self.calcutateOrderBySymbol()
@@ -2269,7 +2273,7 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             self.underlying = underlying
             break
         self.totalCellDelta = OmCell(
-            str(self.portfolio.posDelta + self.underlying.netPos * self.underlying.lastPrice * 0.01), None, COLOR_POS)
+            str(self.portfolio.posDelta), None, COLOR_POS)
         self.totalCellGamma = OmCell(str(self.portfolio.posGamma), None, COLOR_POS)
         self.totalCellVega = OmCell(str(self.portfolio.posVega), None, COLOR_POS)
         self.totalCellTheta = OmCell(str(self.portfolio.posTheta), None, COLOR_POS)
@@ -2609,7 +2613,7 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             self.chainPosVega[row] = chain.posVega
 
 
-        self.totalCellDelta.setText(str(self.portfolio.posDelta + self.underlying.netPos * self.underlying.lastPrice * 0.01))
+        self.totalCellDelta.setText(str(self.portfolio.posDelta ))
         self.totalCellGamma.setText(str(self.portfolio.posGamma))
         self.totalCellVega.setText(str(self.portfolio.posVega))
         self.totalCellTheta.setText(str(self.portfolio.posTheta))
