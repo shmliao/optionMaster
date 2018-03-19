@@ -49,6 +49,7 @@ class OmCell(QtWidgets.QTableWidgetItem):
 ########################################################################
 class OmCellEditText(QtWidgets.QDoubleSpinBox):
     """单元格"""
+<<<<<<< HEAD
     # ----------------------------------------------------------------------
     def __init__(self, text=None, kind=None, data=None,key=None):
         """Constructor"""
@@ -56,6 +57,15 @@ class OmCellEditText(QtWidgets.QDoubleSpinBox):
         if data and key:
             self.key=key
             self.data = data
+=======
+
+    # ----------------------------------------------------------------------
+    def __init__(self, text=None, kind=None, data=None):
+        """Constructor"""
+        super(OmCellEditText, self).__init__()
+        self.data = data
+
+>>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
         if kind:
             if kind=="impv":
@@ -63,6 +73,7 @@ class OmCellEditText(QtWidgets.QDoubleSpinBox):
                 self.setMinimum(0)
                 self.setSingleStep(0.01)
                 self.setMaximum(100)
+<<<<<<< HEAD
             elif kind=='volumn':
                 self.setDecimals(0)
                 self.setMinimum(0)
@@ -80,3 +91,15 @@ class OmCellEditText(QtWidgets.QDoubleSpinBox):
 
     def test(self,double):
         print double
+=======
+            else:
+                self.setDecimals(0)
+                self.setMinimum(0)
+                self.setMaximum(1000)
+        if text:
+            self.setValue(float(text))
+
+        self.setFont(QtGui.QFont("Roman times", 10))
+
+
+>>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a

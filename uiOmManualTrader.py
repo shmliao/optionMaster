@@ -2141,7 +2141,11 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         u'到期日',
         u'到期时间',
         u'隐含利率',
+<<<<<<< HEAD
         u'Delta',
+=======
+        u'Delt',
+>>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         u'Gamma',
         u'Vega',
         u'Theta',
@@ -2161,8 +2165,11 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         u'Call持仓',
         u'Put持仓',
         u'总持仓',
+<<<<<<< HEAD
         u'Vega分解',
         u'远期2'
+=======
+>>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     ]
 
     def __init__(self, omEngine,kind,parent=None):
@@ -2231,11 +2238,14 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.putVolumn = None
         self.totalVolumn = None
 
+<<<<<<< HEAD
         self.cellDecomposeVega={}
         self.decomposeVega={}
         self.atTheMoneyVega={}
         self.chainPosVega={}
 
+=======
+>>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         self.callPosition = None
         self.putPosition = None
         self.totalPosition = None
@@ -2296,6 +2306,7 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.underlyingDelta = OmCell(str(int(self.underlying.netPos * self.underlying.lastPrice * 0.01)), None,
                                       COLOR_POS)
         self.setItem(5, 3, self.underlyingDelta)
+<<<<<<< HEAD
 
         self.setItem(4, 3, self.totalCellDelta)
         self.setItem(4, 4, self.totalCellGamma)
@@ -2307,6 +2318,19 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.setItem(4, 9, self.totalPosVomma)
         self.setItem(4, 10, self.totalPosVonna)
 
+=======
+
+        self.setItem(4, 3, self.totalCellDelta)
+        self.setItem(4, 4, self.totalCellGamma)
+        self.setItem(4, 5, self.totalCellVega)
+        self.setItem(4, 6, self.totalCellTheta)
+
+        self.setItem(4, 7, self.totalPosDgammaDS)
+        self.setItem(4, 8, self.totalPosDvegaDS)
+        self.setItem(4, 9, self.totalPosVomma)
+        self.setItem(4, 10, self.totalPosVonna)
+
+>>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         self.setItem(4, 17, self.callVolumn)
         self.setItem(4, 18, self.putVolumn)
         self.setItem(4, 19, self.totalVolumn)
@@ -2314,6 +2338,7 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.setItem(4, 20, self.callPosition)
         self.setItem(4, 21, self.putPosition)
         self.setItem(4, 22, self.totalPosition)
+<<<<<<< HEAD
 
         self.setItem(5, 17, OmCell(u"权利仓", None, COLOR_POS))
         self.setItem(5, 18, OmCell(u"义务仓", None, COLOR_POS))
@@ -2338,6 +2363,8 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.setItem(6, 20,self.myLongTrade)
         self.setItem(6, 21,  self.myshortTrade)
         self.setItem(6, 22, self.myTotalTrade)
+=======
+>>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
         for row, chain in enumerate(self.portfolio.chainDict.values()):
             cellDueDate = OmCell(str(chain.optionDict[chain.atTheMoneySymbol].expiryDate), None, COLOR_POS)
@@ -2435,6 +2462,7 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             self.setItem(row, 21, cellPutPosition)
             self.setItem(row, 22, cellTotalPosition)
 
+<<<<<<< HEAD
             self.atTheMoneyVega[row]=chain.optionDict[chain.atTheMoneySymbol].vega
             self.chainPosVega[row]=chain.posVega
 
@@ -2556,6 +2584,15 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         #     self.decomposeVega[3] =self.chainPosVega[3] * (forwordVega[3] / self.atTheMoneyVega[3])
         # except:
         #     self.decomposeVega[3]=0
+=======
+        self.calculateForwardImpv()
+        self.impvCellDecompose[0] = OmCell('%.1f' % (self.forwardImpv[0] * 100), None, COLOR_POS)
+        self.impvCellDecompose[1] = OmCell('%.1f' % (self.forwardImpv[1] * 100), None, COLOR_POS)
+        self.impvCellDecompose[2] = OmCell('%.1f' % (self.forwardImpv[2] * 100), None, COLOR_POS)
+        self.setItem(1, 16, self.impvCellDecompose[0])
+        self.setItem(2, 16, self.impvCellDecompose[1])
+        self.setItem(3, 16, self.impvCellDecompose[2])
+>>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
     def calculateForwardImpv(self):
         for index in self.dueTime.keys():
@@ -2567,6 +2604,7 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
                     self.forwardImpv[index] = 0
         self.forwardImpv[3] = 0
 
+<<<<<<< HEAD
 
         for index in self.dueTime.keys():
             if index < 3:
@@ -2577,6 +2615,8 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
                     self.forwardImpv2[index] = 0
         self.forwardImpv2[3] = 0
 
+=======
+>>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     def timingCalculate(self, event):
         for row, chain in enumerate(self.portfolio.chainDict.values()):
             self.cellDueTime[row].setText(str(round(chain.optionDict[chain.atTheMoneySymbol].t, 4)))
@@ -2609,11 +2649,16 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
             self.cellPutVolumn[row].setText(str(chain.putVolume))
             self.cellTotalVolumn[row].setText(str(chain.callVolume + chain.putVolume))
 
+<<<<<<< HEAD
             self.atTheMoneyVega[row] = chain.optionDict[chain.atTheMoneySymbol].vega
             self.chainPosVega[row] = chain.posVega
 
 
         self.totalCellDelta.setText(str(self.portfolio.posDelta ))
+=======
+
+        self.totalCellDelta.setText(str(self.portfolio.posDelta + self.underlying.netPos * self.underlying.lastPrice * 0.01))
+>>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         self.totalCellGamma.setText(str(self.portfolio.posGamma))
         self.totalCellVega.setText(str(self.portfolio.posVega))
         self.totalCellTheta.setText(str(self.portfolio.posTheta))
@@ -2657,6 +2702,13 @@ class OptionAnalysisTable(QtWidgets.QTableWidget):
         self.myshortTrade.setText(str(self.portfolio.shortTrade+self.mainEngine.dataEngine.shortTradedVolumn))
         self.myTotalTrade.setText(str(self.portfolio.longTrade + self.portfolio.shortTrade+self.mainEngine.dataEngine.longTradedVolumn+self.mainEngine.dataEngine.shortTradedVolumn))
 
+
+        self.callVolumn.setText(str(self.portfolio.callVolume))
+        self.putVolumn.setText(str(self.portfolio.putVolume))
+        self.totalVolumn.setText(str(self.portfolio.callVolume+self.portfolio.putVolume))
+        self.callPosition.setText(str(self.portfolio.callPostion))
+        self.putPosition.setText(str(self.portfolio.putPostion))
+        self.totalPosition.setText(str(self.portfolio.callPostion+self.portfolio.putPostion))
 
 
 # add by lsm 20180117
