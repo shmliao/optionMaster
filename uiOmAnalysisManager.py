@@ -5,7 +5,7 @@ from __future__ import division
 import numpy as np
 
 from .uiOmBase import *
-
+from .omDate import getTimeToMaturity,ANNUAL_TRADINGDAYS
 
 ########################################################################
 class ScenarioValueMonitor(QtWidgets.QTableWidget):
@@ -95,7 +95,7 @@ class ScenarioAnalysisMonitor(QtWidgets.QTabWidget):
         """"""
         self.valueMonitorList = []
         
-        for key in ['pnl', 'delta', 'gamma', 'theta', 'vega']:
+        for key in ['pnl', 'delta', 'gamma', 'vega']:
             valueMonitor = ScenarioValueMonitor(key)
             self.addTab(valueMonitor, key)
             self.valueMonitorList.append(valueMonitor)
@@ -124,11 +124,11 @@ class AnalysisManager(QtWidgets.QWidget):
     #----------------------------------------------------------------------
     def initUi(self):
         """初始化界面"""
-        self.setWindowTitle(u'持仓分析')
+        self.setWindowTitle(u'压力测试')
         
         self.scenarioAnalysisMonitor = ScenarioAnalysisMonitor()
         
-        self.buttonScenarioAnalysis = QtWidgets.QPushButton(u'情景分析')
+        self.buttonScenarioAnalysis = QtWidgets.QPushButton(u'开始计算')
         self.buttonScenarioAnalysis.clicked.connect(self.updateData)
         
         hbox = QtWidgets.QHBoxLayout()
@@ -149,17 +149,17 @@ class AnalysisManager(QtWidgets.QWidget):
     
     #----------------------------------------------------------------------
     def runScenarioAnalysis(self):
-        """运行情景分析"""
+        """开始计算"""
         portfolio = self.portfolio
-        calculateGreeks = portfolio.model.calculateGreeks
-        
+        calculateGreeksForAnalysis = portfolio.model.calculateGreeksForAnalysis
+        calculatePrice=portfolio.model.calculatePrice
         if not portfolio:
             return None, None, None
         
         changeRange = 5
         priceChangeArray = np.arange(-changeRange, changeRange+1) / 100
         impvChangeArray = np.arange(-changeRange, changeRange+1) / 100
-        expiryChange = 1/240    # 一个交易日对应的时间变化
+        expiryChange = 1/ANNUAL_TRADINGDAYS    # 一个交易日对应的时间变化
         result = {}     # 分析结果
         
         for priceChange in priceChangeArray:
@@ -178,19 +178,21 @@ class AnalysisManager(QtWidgets.QWidget):
                     for option in portfolio.optionDict.values():
                         if not option.netPos:
                             continue
-                        
-                        price, delta, gamma, theta, vega = calculateGreeks(option.underlying.midPrice*(1+priceChange),
+                        underlyingPrice=option.underlying.midPrice*(1+priceChange)
+                        price = calculatePrice(underlyingPrice, option.k, option.r, option.t, option.midImpv*(1+impvChange),
+                                               option.cp)
+                        delta, gamma, vega = calculateGreeksForAnalysis(underlyingPrice,
                                                                            option.k,
                                                                            option.r,
                                                                            max(option.t-expiryChange, 0),
-                                                                           option.pricingImpv*(1+impvChange),
+                                                                           option.callorPutImpv*(1+impvChange),
                                                                            option.cp)
-                        
                         portfolioPnl += (price - option.theoPrice) * option.netPos * option.size
-                        portfolioDelta += delta * option.netPos * option.size
-                        portfolioGamma += gamma * option.netPos * option.size
-                        portfolioTheta += theta * option.netPos * option.size
-                        portfolioVega += vega * option.netPos * option.size
+                        portfolioDelta += delta * option.netPos * option.size*underlyingPrice* 0.01
+                        portfolioGamma += gamma * option.netPos * option.size* pow(underlyingPrice, 2) * 0.0001
+                        #portfolioTheta += theta * option.netPos * option.size
+                        portfolioVega += vega * option.netPos * option.size*0.01
+
                 except ZeroDivisionError:
                     return None, None, None
                 
@@ -198,10 +200,8 @@ class AnalysisManager(QtWidgets.QWidget):
                     'pnl': portfolioPnl,
                     'delta': portfolioDelta,
                     'gamma': portfolioGamma,
-                    'theta': portfolioTheta,
+                    #'theta': portfolioTheta,
                     'vega': portfolioVega
                 }
                 result[(priceChange, impvChange)] = d
-        
-        return result, priceChangeArray, impvChangeArray    
-    
+        return result, priceChangeArray, impvChangeArray

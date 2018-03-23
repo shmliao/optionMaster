@@ -3,11 +3,7 @@
 from vnpy.event import Event
 from uiOmVolatilityManager import VolatilityChart
 
-<<<<<<< HEAD
 from vnpy.trader.vtConstant import DIRECTION_LONG, DIRECTION_SHORT, OFFSET_OPEN, OFFSET_CLOSE, PRICETYPE_LIMITPRICE,OPTION_CALL,OPTION_PUT
-=======
-from vnpy.trader.vtConstant import DIRECTION_LONG, DIRECTION_SHORT, OFFSET_OPEN, OFFSET_CLOSE, PRICETYPE_LIMITPRICE
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 from vnpy.trader.vtObject import VtOrderReq
 from vnpy.trader.vtEvent import EVENT_TICK, EVENT_TRADE, EVENT_ORDER, EVENT_TIMER
 from vnpy.trader.uiBasicWidget import WorkingOrderMonitor, BasicMonitor, BasicCell, NameCell, DirectionCell, PnlCell, \
@@ -29,18 +25,14 @@ from vnpy.trader.vtConstant import *
 from vnpy.trader.uiQt import QtGui, QtWidgets, QtCore, BASIC_FONT
 from PyQt4.QtGui import QAbstractItemView
 from math import (log, pow, sqrt, exp)
-<<<<<<< HEAD
 import time
 from threading import Timer
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
 
 # Add by lsm 20180208
 class BookChainMonitor(QtWidgets.QTableWidget):
     """期权链监控"""
     headers = [
-<<<<<<< HEAD
         u'买价',
         u'买隐波',
         u'买阈值',
@@ -79,67 +71,20 @@ class BookChainMonitor(QtWidgets.QTableWidget):
         u'买阈值',
         u'买隐波',
         u'买价',
-=======
-        u'买价0',
-        u'买隐波1',
-        u'call买阈值2',
-        u'买委托量3',
-        u'Impv递增4',
-        u'perVol5',
-        u'单次量6',
-        u'买开关7',
-
-        u'卖开关8',
-        u'卖价9',
-        u'卖隐波10',
-        u'call卖阈值11',
-        u'卖委托量12',
-        u'Impv递增13',
-        u'perVol14',
-        u'单次量15',
-
-        u'行权价16',
-
-        u'Impv递增17',
-        u'perVol18',
-        u'单次量19',
-        u'卖委托量20',
-        u'put卖阈值21',
-        u'卖隐波22',
-        u'卖价23',
-        u'卖开关24',
-
-        u'买开关25',
-        u'Impv递增26',
-        u'perVol27',
-        u'单次量28',
-        u'买委托量29',
-        u'put买阈值30',
-        u'买隐波31',
-        u'买价32',
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     ]
     signalTick = QtCore.pyqtSignal(type(Event()))
     signalPos = QtCore.pyqtSignal(type(Event()))
     signalTrade = QtCore.pyqtSignal(type(Event()))
 
-<<<<<<< HEAD
     def __init__(self, chain, omEngine, mainEngine, eventEngine, bookImpvConfig,riskOfGreeksWidget,parent=None):
         """Constructor"""
         super(BookChainMonitor, self).__init__(parent)
         self.parentWidget=parent
         self.riskOfGreeksWidget=riskOfGreeksWidget
-=======
-    def __init__(self, chain, omEngine, mainEngine, eventEngine, bookImpvConfig,parent=None):
-        """Constructor"""
-        super(BookChainMonitor, self).__init__(parent)
-
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         self.omEngine = omEngine
         self.eventEngine = eventEngine
         self.mainEngine = mainEngine
         # 保存代码和持仓的字典
-<<<<<<< HEAD
         self.cellBidPrice = {}
         self.cellBidImpv =  {}
         self.cellAskPrice =  {}
@@ -153,33 +98,6 @@ class BookChainMonitor(QtWidgets.QTableWidget):
         self.switchBidSymbol={}
         self.switchAskSymbol = {}
 
-=======
-
-        self.cellBidPrice = {}
-        self.cellBidImpv =  {}
-        self.cellBookBidImpv=  {}
-        self.cellAskPrice =  {}
-        self.cellAskImpv =  {}
-        self.cellBookAskImpv =  {}
-
-        self.cellBidStepPerVolumn = {}
-        self.cellBidImpvChange = {}
-        self.cellBidStepVolum = {}
-        self.cellAskStepPerVolumn = {}
-        self.cellAskImpvChange = {}
-        self.cellAskStepVolum = {}
-
-        self.cellBidSwitch =  {}
-        self.cellAskSwitch = {}
-
-        self.cellBidEntruthVolumn = {}
-        self.cellAskEntruthVolumn = {}
-
-        #合约的波动率报单开关key:symbol,value:off,on
-        self.switchBidSymbol={}
-        self.switchAskSymbol = {}
-        # add by me
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         self.chain = chain
         # 保存期权对象的字典
         portfolio = omEngine.portfolio
@@ -187,7 +105,6 @@ class BookChainMonitor(QtWidgets.QTableWidget):
         self.instrumentDict.update(portfolio.optionDict)
         self.instrumentDict.update(portfolio.underlyingDict)
 
-<<<<<<< HEAD
         # 打开波动率报单的合约，存储开关打开的合约，这样是为了避免每次都循环所有的合约，影响速度！
         self.onBidSymbol = []
         self.onAskSymbol = []
@@ -220,25 +137,10 @@ class BookChainMonitor(QtWidgets.QTableWidget):
         self.bookAskImpv = {}
         self.askEntruthVolumn = {}
         self.askTradedVolumn = {}
-=======
-        # 打开波动率报单的合约
-        self.onBidSymbol = []
-        self.onAskSymbol = []
-
-        self.bookBidImpv = {}
-        self.bidEntruthVolumn = {}
-        self.bidStepPerVolumn = {}
-        self.bidImpvChange = {}
-        self.bidStepVolum = {}
-
-        self.bookAskImpv = {}
-        self.askEntruthVolumn = {}
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         self.askStepPerVolumn = {}
         self.askImpvChange = {}
         self.askStepVolum = {}
 
-<<<<<<< HEAD
         self.cellBookAskImpv = {}
         self.cellAskEntruthVolumn = {}
         self.cellAskTradedVolumn={}
@@ -255,8 +157,6 @@ class BookChainMonitor(QtWidgets.QTableWidget):
         self.impvChange=0.1
         self.stepPerVolumn=1
 
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         # 初始化
         self.initUi()
         self.registerEvent()
@@ -264,7 +164,6 @@ class BookChainMonitor(QtWidgets.QTableWidget):
         # ----------------------------------------------------------------------
         self.itemClicked.connect(self.switchVolitity)
 
-<<<<<<< HEAD
 
     def firstSenderOrder(self,symbol,direct):
         # 1.假设设置的波动率为v，盘口买隐波率为bidv，卖隐波率为askv
@@ -428,45 +327,6 @@ class BookChainMonitor(QtWidgets.QTableWidget):
         """查询单个合约的委托"""
         return self.mainEngine.getOrder(vtOrderID)
     # ----------------------------------------------------------------------每个合约的开关设置
-=======
-        self.eventEngine.register(EVENT_TIMER, self.timingBook)
-
-    def modifyConfig(self):
-        self.bookBidImpv = {}
-        self.bookAskImpv = {}
-        self.bidEntruthVolumn = {}
-        self.askEntruthVolumn = {}
-        for option in self.chain.optionDict.values():
-            self.bookBidImpv[option.symbol]=float(self.cellBookBidImpv[option.symbol].text())
-            self.bookAskImpv[option.symbol] = float(self.cellBookAskImpv[option.symbol].text())
-            self.bidEntruthVolumn[option.symbol] =float(self.cellBidEntruthVolumn[option.symbol].text())
-            self.askEntruthVolumn[option.symbol] = float(self.cellAskEntruthVolumn[option.symbol].text())
-
-    def timingBook(self,event):
-        pass
-        # for symbol in self.onSymbol:
-        #     #  买下单
-        #
-        #     if self.bookBidImpv[symbol]/100>self.chain.optionDict[symbol].bidImpv and self.bookBidImpv[symbol]>0 and self.chain.optionDict[symbol].bidImpv>0:
-        #         print '买'
-        #     if self.bookAskImpv[symbol]/100<self.chain.optionDict[symbol].askImpv and self.bookAskImpv[symbol]>0 and self.chain.optionDict[symbol].askImpv>0:
-        #         print '卖'
-
-    def backups(self):
-        longVolumeDic,shortVolumeDic=self.calcutateOrderBySymbol()
-        longOrder=False
-        shorOrder=True
-        if symbol not in longVolumeDic.keys():
-            longOrder=True
-        elif longVolumeDic[symbol]<10:
-            longOrder=True
-
-        if symbol not in shortVolumeDic.keys():
-            shorOrder = True
-        elif shortVolumeDic[symbol] < 10:
-            shorOrder = True
-
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     def switchVolitity(self,item):
         option = item.data
         print option.symbol
@@ -475,37 +335,27 @@ class BookChainMonitor(QtWidgets.QTableWidget):
                 self.switchBidSymbol[option.symbol] = 'off'
                 self.cellBidSwitch[option.symbol].setText('off')
                 self.onBidSymbol.remove(option.symbol)
-<<<<<<< HEAD
                 self.cancelOrder(option.symbol,DIRECTION_LONG)
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
             else:
                 self.switchBidSymbol[option.symbol] = 'on'
                 self.cellBidSwitch[option.symbol].setText('on')
                 self.onBidSymbol.append(option.symbol)
-<<<<<<< HEAD
                 greekControl=self.judgeGreeksConfig(option.symbol, DIRECTION_LONG)
                 if greekControl:
                     self.firstSenderOrder(option.symbol, DIRECTION_LONG)
             self.bidTradedVolumn[option.symbol]=0
             self.cellBidTradedVolumn[option.symbol].setText('0')
 
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         elif item in self.cellAskSwitch.values():
             if option.symbol in self.onAskSymbol:
                 self.switchAskSymbol[option.symbol] = 'off'
                 self.cellAskSwitch[option.symbol].setText('off')
                 self.onAskSymbol.remove(option.symbol)
-<<<<<<< HEAD
                 self.cancelOrder(option.symbol,DIRECTION_SHORT)
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
             else:
                 self.switchAskSymbol[option.symbol] = 'on'
                 self.cellAskSwitch[option.symbol].setText('on')
                 self.onAskSymbol.append(option.symbol)
-<<<<<<< HEAD
                 greekControl = self.judgeGreeksConfig(option.symbol, DIRECTION_SHORT)
                 if greekControl:
                     self.firstSenderOrder(option.symbol, DIRECTION_SHORT)
@@ -564,17 +414,11 @@ class BookChainMonitor(QtWidgets.QTableWidget):
                 req.orderID = order.orderID
                 self.mainEngine.cancelOrder(req, order.gatewayName)
 
-=======
-            return
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
     def initUi(self):
         """初始化界面"""
         portfolio = self.omEngine.portfolio
-<<<<<<< HEAD
         self.horizontalHeader().setDefaultSectionSize(70)
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
         # 初始化表格
         self.setColumnCount(len(self.headers))
@@ -597,7 +441,6 @@ class BookChainMonitor(QtWidgets.QTableWidget):
 
 
         for option in self.chain.callDict.values():
-<<<<<<< HEAD
             priceFormat = "%" + "." + str(option.remainDecimalPlaces) + "f"
             self.optionPriceFormat[option.symbol] = priceFormat
 
@@ -617,24 +460,10 @@ class BookChainMonitor(QtWidgets.QTableWidget):
             self.askStepPerVolumn[option.symbol]=self.stepPerVolumn
             self.askImpvChange[option.symbol]=self.impvChange
             self.askStepVolum[option.symbol]=self.stepVolumn
-=======
-            self.bookBidImpv[option.symbol]=0
-            self.bidEntruthVolumn[option.symbol]=0
-            self.bidStepPerVolumn[option.symbol]=0
-            self.bidImpvChange[option.symbol]=0
-            self.bidStepVolum[option.symbol]=0
-
-            self.bookAskImpv[option.symbol]=0
-            self.askEntruthVolumn[option.symbol]=0
-            self.askStepPerVolumn[option.symbol]=0
-            self.askImpvChange[option.symbol]=0
-            self.askStepVolum[option.symbol]=0
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
             self.switchBidSymbol[option.symbol]='off'
             self.switchAskSymbol[option.symbol]='off'
 
-<<<<<<< HEAD
             cellBidPrice = OmCell(str(priceFormat % option.bidPrice1), COLOR_BID, COLOR_BLACK, option, 10)
             cellBidImpv = OmCell('%.2f' % (option.bidImpv * 100), COLOR_BID, COLOR_BLACK, option, 10)
             cellBookBidImpv = OmCellEditText(self.bookBidImpv[option.symbol], 'impv', self.bookBidImpv,option.symbol)
@@ -645,20 +474,10 @@ class BookChainMonitor(QtWidgets.QTableWidget):
             cellBidImpvChange = OmCellEditText(self.bidImpvChange[option.symbol], 'impv', self.bidImpvChange,option.symbol)
             cellBidStepPerVolumn = OmCellEditText(self.bidStepPerVolumn[option.symbol], 'volumn', self.bidStepPerVolumn,option.symbol)
             cellBidStepVolum = OmCellEditText(self.bidStepVolum[option.symbol], 'volumn', self.bidStepVolum,option.symbol)
-=======
-            cellBidPrice = OmCell(str("%.4f" % option.bidPrice1), COLOR_BID, COLOR_BLACK, option, 10)
-            cellBidImpv = OmCell('%.2f' % (option.bidImpv * 100), COLOR_BID, COLOR_BLACK, option, 10)
-            cellBookBidImpv = OmCellEditText(self.bookBidImpv[option.symbol], 'impv', option)
-            cellBidEntruthVolumn = OmCellEditText(self.bidEntruthVolumn[option.symbol],'volumn' , option)
-            cellBidImpvChange = OmCellEditText(self.bidImpvChange[option.symbol], 'impv', option)
-            cellBidStepPerVolumn = OmCellEditText(self.bidStepPerVolumn[option.symbol], 'volumn', option)
-            cellBidStepVolum = OmCellEditText(self.bidStepVolum[option.symbol], 'volumn', option)
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
             cellBidSwitch = OmCell(self.switchBidSymbol[option.symbol], COLOR_BID, COLOR_BLACK, option, 10)
             cellAskSwitch = OmCell(self.switchAskSymbol[option.symbol], COLOR_ASK, COLOR_BLACK, option, 10)
 
-<<<<<<< HEAD
             cellAskPrice = OmCell(str(priceFormat % option.askPrice1), COLOR_ASK, COLOR_BLACK, option, 10)
             cellAskImpv = OmCell('%.2f' % (option.askImpv * 100), COLOR_ASK, COLOR_BLACK, option, 10)
             cellBookAskImpv =OmCellEditText(self.bookAskImpv[option.symbol] , 'impv', self.bookAskImpv,option.symbol)
@@ -669,26 +488,13 @@ class BookChainMonitor(QtWidgets.QTableWidget):
             cellAskStepPerVolumn = OmCellEditText(self.askStepPerVolumn[option.symbol], 'volumn', self.askStepPerVolumn,option.symbol)
             cellAskStepVolum = OmCellEditText(self.askStepVolum[option.symbol], 'volumn', self.askStepVolum,option.symbol)
             cellNetPosVol = OmCell(str(option.netPos), COLOR_POS, COLOR_BLACK, option, 10)
-=======
-            cellAskPrice = OmCell(str("%.4f" % option.askPrice1), COLOR_ASK, COLOR_BLACK, option, 10)
-            cellAskImpv = OmCell('%.2f' % (option.askImpv * 100), COLOR_ASK, COLOR_BLACK, option, 10)
-            cellBookAskImpv =OmCellEditText(self.bookAskImpv[option.symbol] , 'impv', option)
-            cellAskEntruthVolumn =OmCellEditText(self.askEntruthVolumn[option.symbol] ,'volumn' , option)
-            cellAskImpvChange = OmCellEditText(self.askImpvChange[option.symbol], 'impv', option)
-            cellAskStepPerVolumn = OmCellEditText(self.askStepPerVolumn[option.symbol], 'volumn', option)
-            cellAskStepVolum = OmCellEditText(self.askStepVolum[option.symbol], 'volumn', option)
-
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
             cellStrike = OmCell(str(option.k), COLOR_STRIKE)
 
             self.cellBidPrice[option.symbol] = cellBidPrice
             self.cellBidImpv[option.symbol] = cellBidImpv
             self.cellBookBidImpv[option.symbol] = cellBookBidImpv
             self.cellBidEntruthVolumn[option.symbol] = cellBidEntruthVolumn
-<<<<<<< HEAD
             self.cellBidTradedVolumn[option.symbol] = cellBidTradedVolumn
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
             self.cellBidImpvChange[option.symbol] = cellBidImpvChange
             self.cellBidStepPerVolumn[option.symbol] = cellBidStepPerVolumn
             self.cellBidStepVolum[option.symbol] = cellBidStepVolum
@@ -696,7 +502,6 @@ class BookChainMonitor(QtWidgets.QTableWidget):
             self.cellBidSwitch[option.symbol] = cellBidSwitch
             self.cellAskSwitch[option.symbol] = cellAskSwitch
 
-<<<<<<< HEAD
             self.cellAskPrice[option.symbol] = cellAskPrice
             self.cellAskImpv[option.symbol] = cellAskImpv
             self.cellBookAskImpv[option.symbol] = cellBookAskImpv
@@ -706,15 +511,6 @@ class BookChainMonitor(QtWidgets.QTableWidget):
             self.cellAskStepPerVolumn[option.symbol] = cellAskStepPerVolumn
             self.cellAskStepVolum[option.symbol] = cellAskStepVolum
             self.cellNetPosVol[option.symbol] = cellNetPosVol
-=======
-            self.cellAskPrice[option.symbol] = cellAskImpv
-            self.cellAskImpv[option.symbol] = cellAskImpv
-            self.cellBookAskImpv[option.symbol] = cellBookAskImpv
-            self.cellAskEntruthVolumn[option.symbol] = cellAskEntruthVolumn
-            self.cellAskImpvChange[option.symbol] = cellAskImpvChange
-            self.cellAskStepPerVolumn[option.symbol] = cellAskStepPerVolumn
-            self.cellAskStepVolum[option.symbol] = cellAskStepVolum
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
             self.setItem(callRow, 0, cellBidPrice)
             self.setItem(callRow, 1, cellBidImpv)
@@ -734,18 +530,13 @@ class BookChainMonitor(QtWidgets.QTableWidget):
             self.setCellWidget(callRow, 13, cellAskImpvChange)
             self.setCellWidget(callRow, 14, cellAskStepPerVolumn)
             self.setCellWidget(callRow, 15, cellAskStepVolum)
-<<<<<<< HEAD
             self.setItem(callRow, 16, cellNetPosVol)
             self.setItem(callRow, 17, cellStrike)
-=======
-            self.setItem(callRow, 16, cellStrike)
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
             callRow += 1
             # put
         putRow = row
 
         for option in self.chain.putDict.values():
-<<<<<<< HEAD
             priceFormat = "%" + "." + str(option.remainDecimalPlaces) + "f"
             self.optionPriceFormat[option.symbol] = priceFormat
             self.firstBid[option.symbol] = False
@@ -776,35 +567,10 @@ class BookChainMonitor(QtWidgets.QTableWidget):
             cellBidImpvChange = OmCellEditText(self.bidImpvChange[option.symbol], 'impv', self.bidImpvChange,option.symbol)
             cellBidStepPerVolumn = OmCellEditText(self.bidStepPerVolumn[option.symbol], 'volumn', self.bidStepPerVolumn,option.symbol)
             cellBidStepVolum = OmCellEditText(self.bidStepVolum[option.symbol], 'volumn', self.bidStepVolum,option.symbol)
-=======
-            self.bookBidImpv[option.symbol] = 0
-            self.bidEntruthVolumn[option.symbol] = 0
-            self.bidStepPerVolumn[option.symbol] = 0
-            self.bidImpvChange[option.symbol] = 0
-            self.bidStepVolum[option.symbol] = 0
-
-            self.bookAskImpv[option.symbol] = 0
-            self.askEntruthVolumn[option.symbol] = 0
-            self.askStepPerVolumn[option.symbol] = 0
-            self.askImpvChange[option.symbol] = 0
-            self.askStepVolum[option.symbol] = 0
-
-            self.switchBidSymbol[option.symbol] = 'off'
-            self.switchAskSymbol[option.symbol] = 'off'
-
-            cellBidPrice = OmCell(str("%.4f" % option.bidPrice1), COLOR_BID, COLOR_BLACK, option, 10)
-            cellBidImpv = OmCell('%.2f' % (option.bidImpv * 100), COLOR_BID, COLOR_BLACK, option, 10)
-            cellBookBidImpv = OmCellEditText(self.bookBidImpv[option.symbol], 'impv', option)
-            cellBidEntruthVolumn = OmCellEditText(self.bidEntruthVolumn[option.symbol], 'volumn', option)
-            cellBidImpvChange = OmCellEditText(self.bidImpvChange[option.symbol], 'impv', option)
-            cellBidStepPerVolumn = OmCellEditText(self.bidStepPerVolumn[option.symbol], 'volumn', option)
-            cellBidStepVolum = OmCellEditText(self.bidStepVolum[option.symbol], 'volumn', option)
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
             cellBidSwitch = OmCell(self.switchBidSymbol[option.symbol], COLOR_BID, COLOR_BLACK, option, 10)
             cellAskSwitch = OmCell(self.switchAskSymbol[option.symbol], COLOR_ASK, COLOR_BLACK, option, 10)
 
-<<<<<<< HEAD
             cellAskPrice = OmCell(str(priceFormat % option.askPrice1), COLOR_ASK, COLOR_BLACK, option, 10)
             cellAskImpv = OmCell('%.2f' % (option.askImpv * 100), COLOR_ASK, COLOR_BLACK, option, 10)
             cellBookAskImpv = OmCellEditText(self.bookAskImpv[option.symbol], 'impv', self.bookAskImpv,option.symbol)
@@ -816,25 +582,12 @@ class BookChainMonitor(QtWidgets.QTableWidget):
             cellAskStepVolum = OmCellEditText(self.askStepVolum[option.symbol], 'volumn', self.askStepVolum,option.symbol)
 
             self.cellNetPosVol[option.symbol] = cellNetPosVol
-=======
-            cellAskPrice = OmCell(str("%.4f" % option.askPrice1), COLOR_ASK, COLOR_BLACK, option, 10)
-            cellAskImpv = OmCell('%.2f' % (option.askImpv * 100), COLOR_ASK, COLOR_BLACK, option, 10)
-            cellBookAskImpv = OmCellEditText(self.bookAskImpv[option.symbol], 'impv', option)
-            cellAskEntruthVolumn = OmCellEditText(self.askEntruthVolumn[option.symbol], 'volumn', option)
-            cellAskImpvChange = OmCellEditText(self.askImpvChange[option.symbol], 'impv', option)
-            cellAskStepPerVolumn = OmCellEditText(self.askStepPerVolumn[option.symbol], 'volumn', option)
-            cellAskStepVolum = OmCellEditText(self.askStepVolum[option.symbol], 'volumn', option)
-
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
             self.cellBidPrice[option.symbol] = cellBidPrice
             self.cellBidImpv[option.symbol] = cellBidImpv
             self.cellBookBidImpv[option.symbol] = cellBookBidImpv
             self.cellBidEntruthVolumn[option.symbol] = cellBidEntruthVolumn
-<<<<<<< HEAD
             self.cellBidTradedVolumn[option.symbol] = cellBidTradedVolumn
 
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
             self.cellBidImpvChange[option.symbol] = cellBidImpvChange
             self.cellBidStepPerVolumn[option.symbol] = cellBidStepPerVolumn
             self.cellBidStepVolum[option.symbol] = cellBidStepVolum
@@ -842,24 +595,16 @@ class BookChainMonitor(QtWidgets.QTableWidget):
             self.cellBidSwitch[option.symbol] = cellBidSwitch
             self.cellAskSwitch[option.symbol] = cellAskSwitch
 
-<<<<<<< HEAD
             self.cellAskPrice[option.symbol] = cellAskPrice
             self.cellAskImpv[option.symbol] = cellAskImpv
             self.cellBookAskImpv[option.symbol] = cellBookAskImpv
             self.cellAskEntruthVolumn[option.symbol] = cellAskEntruthVolumn
             self.cellAskTradedVolumn[option.symbol] = cellAskTradedVolumn
 
-=======
-            self.cellAskPrice[option.symbol] = cellAskImpv
-            self.cellAskImpv[option.symbol] = cellAskImpv
-            self.cellBookAskImpv[option.symbol] = cellBookAskImpv
-            self.cellAskEntruthVolumn[option.symbol] = cellAskEntruthVolumn
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
             self.cellAskImpvChange[option.symbol] = cellAskImpvChange
             self.cellAskStepPerVolumn[option.symbol] = cellAskStepPerVolumn
             self.cellAskStepVolum[option.symbol] = cellAskStepVolum
 
-<<<<<<< HEAD
             self.setItem(putRow, 18, cellNetPosVol)
             self.setCellWidget(putRow, 19, cellAskImpvChange)
             self.setCellWidget(putRow, 20, cellAskStepPerVolumn)
@@ -952,30 +697,6 @@ class BookChainMonitor(QtWidgets.QTableWidget):
                 self.originalBookAskImpv[key]=(self.chain.optionDict[key].bidImpv*100+self.chain.optionDict[key].askImpv*100)/2+double
                 self.cellBookAskImpv[key].setValue(self.originalBookAskImpv[key])
                 self.cellBookAskImpv[key].data[key] = self.originalBookAskImpv[key]
-=======
-
-            self.setCellWidget(putRow, 17, cellAskImpvChange)
-            self.setCellWidget(putRow, 18, cellAskStepPerVolumn)
-            self.setCellWidget(putRow, 19, cellAskStepVolum)
-            self.setCellWidget(putRow, 20, cellAskEntruthVolumn)
-            self.setCellWidget(putRow, 21, cellBookAskImpv)
-            self.setItem(putRow, 22, cellAskImpv)
-            self.setItem(putRow, 23, cellAskPrice)
-
-            self.setItem(putRow, 24, cellAskSwitch)
-            self.setItem(putRow, 25, cellBidSwitch)
-
-            self.setCellWidget(putRow, 26, cellBidImpvChange)
-            self.setCellWidget(putRow, 27, cellBidStepPerVolumn)
-            self.setCellWidget(putRow, 28, cellBidStepVolum)
-            self.setCellWidget(putRow, 29, cellBidEntruthVolumn)
-            self.setCellWidget(putRow, 30, cellBookBidImpv)
-            self.setItem(putRow, 31, cellBidImpv)
-            self.setItem(putRow, 32, cellBidPrice)
-
-            putRow += 1
-        row = putRow + 1
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
     # ----------------------------------------------------------------------
     def registerEvent(self):
@@ -987,12 +708,9 @@ class BookChainMonitor(QtWidgets.QTableWidget):
             self.eventEngine.register(EVENT_TICK + option.vtSymbol, self.signalTick.emit)
             self.eventEngine.register(EVENT_TRADE + option.vtSymbol, self.signalTrade.emit)
 
-<<<<<<< HEAD
         self.eventEngine.register(EVENT_TICK + self.chain.underlying.vtSymbol, self.signalTick.emit)
 
 
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
     # ----------------------------------------------------------------------
     def processTickEvent(self, event):
@@ -1000,18 +718,14 @@ class BookChainMonitor(QtWidgets.QTableWidget):
         tick = event.dict_['data']
         symbol = tick.symbol
 
-<<<<<<< HEAD
         if symbol==self.chain.underlying.symbol:
             return
 
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         if symbol in self.cellBidImpv:
             option = self.instrumentDict[symbol]
             self.cellBidImpv[symbol].setText('%.2f' % (option.bidImpv * 100))
             self.cellAskImpv[symbol].setText('%.2f' % (option.askImpv * 100))
 
-<<<<<<< HEAD
         self.cellBidPrice[symbol].setText(self.optionPriceFormat[symbol]% tick.bidPrice1)
         self.cellAskPrice[symbol].setText(self.optionPriceFormat[symbol] % tick.askPrice1)
 
@@ -1033,16 +747,10 @@ class BookChainMonitor(QtWidgets.QTableWidget):
                 greekControl = self.judgeGreeksConfig(symbol, DIRECTION_SHORT)
                 if greekControl:
                     self.tickSendOrder(symbol, DIRECTION_SHORT)
-=======
-        self.cellBidPrice[symbol].setText("%.4f" % tick.bidPrice1)
-        self.cellAskPrice[symbol].setText("%.4f" % tick.askPrice1)
-
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     # ----------------------------------------------------------------------
     def processTradeEvent(self, event):
         """成交更新"""
         trade = event.dict_['data']
-<<<<<<< HEAD
 
         symbol = trade.symbol
         instrument = self.instrumentDict[symbol]
@@ -1085,77 +793,11 @@ class BookChainMonitor(QtWidgets.QTableWidget):
                 self.onAskSymbol.remove(trade.symbol)
 
     # ----------------------------------------------------------------------根据symbol来查询合约委托量
-=======
-        symbol = trade.symbol
-        if symbol not in self.onSymbol:
-            return
-        continueSendOrder(trade)
-
-    def continueSendOrder(self,trade):
-        instrument = self.instrumentDict[symbol]
-        if trade.direction == DIRECTION_LONG:
-            # long成交量trade.volume
-            try:
-                self.longTradeVolumn[symbol] += trade.volume
-            except:
-                self.longTradeVolumn[symbol] = trade.volume
-            # 如果总成交量大于设置的总量
-            if self.longTradeVolumn[symbol] >= self.bidEntruthVolumn[option.symbol]:
-                # 那么需要关闭开关，表示已经全部成交
-                return
-
-            elif trade.tradedVolume > 2:
-                # 判断本次委托全部成交，才提交下一次委托，假设每次委托量为2
-                return
-
-            instrument = self.portfolio.instrumentDict.get(symbol, None)
-            if not instrument:
-                return
-            # 如果空头仓位大于等于买入量，则只需平
-            if instrument.shortPos >= volume:
-                self.fastTrade(symbol, DIRECTION_LONG, OFFSET_CLOSE, price, volume)
-            # 否则先平后开
-            else:
-                openVolume = volume - instrument.shortPos
-                if instrument.shortPos:
-                    self.fastTrade(symbol, DIRECTION_LONG, OFFSET_CLOSE, price, instrument.shortPos)
-                self.fastTrade(symbol, DIRECTION_LONG, OFFSET_OPEN, price, openVolume)
-        elif trade.direction == DIRECTION_SHORT:
-            # short成交量trade.volume
-            try:
-                self.shortTradeVolumn[symbol] += trade.volume
-            except:
-                self.shortTradeVolumn[symbol] = trade.volume
-
-            # 如果总成交量大于设置的总量
-            if self.longTradeVolumn[symbol] >= self.bidEntruthVolumn[option.symbol]:
-                # 那么需要关闭开关，表示已经全部成交
-                return
-            elif trade.tradedVolume > 2:
-                # 判断本次委托全部成交，才提交下一次委托，假设每次委托量为2
-                return
-
-            if self.shortOpenRadio.isChecked():
-                self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_OPEN, price, volume)
-            else:
-                if instrument.longPos >= volume:
-                    self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_CLOSE, price, volume)
-                else:
-                    openVolume = volume - instrument.longPos
-                    if instrument.longPos:
-                        self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_CLOSE, price, instrument.longPos)
-                    self.fastTrade(symbol, DIRECTION_SHORT, OFFSET_OPEN, price, openVolume)
-
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     def calcutateOrderBySymbol(self):
         """根据symbol来查询合约委托量"""
         return self.mainEngine.calcutateOrderBySymbol()
 
-<<<<<<< HEAD
     # ----------------------------------------------------------------------封装下单函数
-=======
-    # ----------------------------------------------------------------------
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     def fastTrade(self, symbol, direction, offset, price, volume):
         """封装下单函数"""
         contract = self.mainEngine.getContract(symbol)
@@ -1181,15 +823,11 @@ class BookVolatility(QtWidgets.QWidget):
     def __init__(self, omEngine, parent=None):
         """Constructor"""
         super(BookVolatility, self).__init__(parent)
-<<<<<<< HEAD
         self.masterSwitch = False
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
         self.omEngine = omEngine
         self.mainEngine = omEngine.mainEngine
         self.eventEngine = omEngine.eventEngine
-<<<<<<< HEAD
 
         self.deltaControl = False
         self.gammaControl = False
@@ -1200,27 +838,16 @@ class BookVolatility(QtWidgets.QWidget):
         #是否开启现货对冲
         self.underlyingHedging=False
 
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         self.tradingWidget = {}
         self.chainMonitorAarry = []
         self.bookImpvConfig = {}
         self.loadJsonConfig()
-<<<<<<< HEAD
         self.totalVolumn = 2
         self.stepVolumn = 1
         self.impvUp = 0.05
         self.impvDown = 0.05
         self.impvChange=0.1
         self.stepPerVolumn = 1
-=======
-        self.totalVolumn = 10
-        self.stepVolumn = 2
-        self.impvUp = 0.5
-        self.impvDown = 0.5
-        self.impvChange=0.1
-        self.stepPerVolumn = 10
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         self.initUi()
         self.setMinimumWidth(1450)
     # ----------------------------------------------------------------------
@@ -1229,14 +856,9 @@ class BookVolatility(QtWidgets.QWidget):
         self.setWindowTitle(u'波动率报单')
 
         tab = QtWidgets.QTabWidget()
-<<<<<<< HEAD
         riskOfGreeksWidget = RiskOfGreeksWidget(self.omEngine, self.mainEngine, self.eventEngine, self)
         for chain in self.omEngine.portfolio.chainDict.values():
             chainMonitor = BookChainMonitor(chain, self.omEngine, self.mainEngine, self.eventEngine,self.bookImpvConfig,riskOfGreeksWidget,self)
-=======
-        for chain in self.omEngine.portfolio.chainDict.values():
-            chainMonitor = BookChainMonitor(chain, self.omEngine, self.mainEngine, self.eventEngine,self.bookImpvConfig)
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
             self.chainMonitorAarry.append(chainMonitor)
             tab.addTab(chainMonitor, chain.symbol)
 
@@ -1246,7 +868,6 @@ class BookVolatility(QtWidgets.QWidget):
         vhboxButtons = QtWidgets.QHBoxLayout()
 
         checkBox = QtWidgets.QCheckBox(u'波动率开关')
-<<<<<<< HEAD
         checkBox.setChecked(self.masterSwitch)
         checkBox.setFixedWidth(120)
         checkBox.clicked.connect(self.changeMasterControl)
@@ -1255,14 +876,6 @@ class BookVolatility(QtWidgets.QWidget):
         underlyingHedgingCheckBox.setChecked(self.underlyingHedging)
         underlyingHedgingCheckBox.setFixedWidth(120)
         underlyingHedgingCheckBox.clicked.connect(self.changeUnderlyingHedging)
-=======
-        checkBox.setChecked(False)
-        checkBox.setFixedWidth(120)
-
-        btnModify = QtWidgets.QPushButton(u'确认修改')
-        btnModify.setFixedWidth(100)
-        btnModify.clicked.connect(self.modifyConfig)
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
 
         btnRestore = QtWidgets.QPushButton(u'数据还原')
@@ -1270,16 +883,9 @@ class BookVolatility(QtWidgets.QWidget):
         btnRestore.clicked.connect(self.dataRestore)
 
         vhboxButtons.addWidget(checkBox)
-<<<<<<< HEAD
         vhboxButtons.addWidget(underlyingHedgingCheckBox)
         vhboxButtons.addWidget(btnRestore)
         vhboxButtons.addStretch()
-=======
-        vhboxButtons.addWidget(btnModify)
-        vhboxButtons.addWidget(btnRestore)
-        vhboxButtons.addStretch()
-        # checkBox.clicked.connect(self.changeHeaders)
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
         vhboxConfig= QtWidgets.QHBoxLayout()
         labelTotal = QtWidgets.QLabel(u'总量')
@@ -1289,11 +895,8 @@ class BookVolatility(QtWidgets.QWidget):
         editTotal.setMinimum(0)
         editTotal.setMaximum(100)
         editTotal.setValue(self.totalVolumn)
-<<<<<<< HEAD
         editTotal.variable = 'EntruthVolumn'
         editTotal.valueChanged.connect(self.modifyConfigBatch)
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
         labelStep = QtWidgets.QLabel(u'单次')
 
@@ -1301,64 +904,42 @@ class BookVolatility(QtWidgets.QWidget):
         editStep.setDecimals(0)
         editStep.setMinimum(0)
         editStep.setMaximum(30)
-<<<<<<< HEAD
         editStep.variable = 'StepVolum'
         editStep.setValue(self.stepVolumn)
         editStep.valueChanged.connect(self.modifyConfigBatch)
-=======
-        editStep.setValue(self.stepVolumn)
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
         labelUp = QtWidgets.QLabel(u'上移')
 
         editUp = QtWidgets.QDoubleSpinBox()
         editUp.setDecimals(2)
         editUp.setMinimum(0)
-<<<<<<< HEAD
         editUp.setMaximum(100)
         editUp.variable = 'ImpvUp'
         editUp.setSingleStep(0.01)
         editUp.setValue(self.impvUp)
         editUp.valueChanged.connect(self.modifyConfigBatch)
-=======
-        editUp.setMaximum(10)
-        editUp.setSingleStep(0.01)
-        editUp.setValue(self.impvUp)
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
         labelDown = QtWidgets.QLabel(u'下移')
 
         editDown = QtWidgets.QDoubleSpinBox()
         editDown.setDecimals(2)
         editDown.setMinimum(0)
-<<<<<<< HEAD
         editDown.setMaximum(100)
         editDown.variable = 'ImpvDown'
         editDown.setSingleStep(0.01)
         editDown.setValue(self.impvDown)
         editDown.valueChanged.connect(self.modifyConfigBatch)
-=======
-        editDown.setMaximum(10)
-        editDown.setSingleStep(0.01)
-        editDown.setValue(self.impvDown)
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
         labelImpvChange = QtWidgets.QLabel(u'波动率增减')
 
         editImpvChange = QtWidgets.QDoubleSpinBox()
         editImpvChange.setDecimals(2)
         editImpvChange.setMinimum(0)
-<<<<<<< HEAD
         editImpvChange.variable = 'ImpvChange'
         editImpvChange.setMaximum(100)
         editImpvChange.setSingleStep(0.01)
         editImpvChange.setValue(self.impvChange)
         editImpvChange.valueChanged.connect(self.modifyConfigBatch)
-=======
-        editImpvChange.setMaximum(100)
-        editImpvChange.setSingleStep(0.01)
-        editImpvChange.setValue(self.impvChange)
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
         labelPerStep = QtWidgets.QLabel(u'per成交量')
 
@@ -1366,7 +947,6 @@ class BookVolatility(QtWidgets.QWidget):
         editPerStep.setDecimals(0)
         editPerStep.setMinimum(0)
         editPerStep.setMaximum(100)
-<<<<<<< HEAD
         editPerStep.variable = 'StepPerVolumn'
         editPerStep.setValue(self.stepPerVolumn)
         editPerStep.valueChanged.connect(self.modifyConfigBatch)
@@ -1380,10 +960,6 @@ class BookVolatility(QtWidgets.QWidget):
         shortDirectionHorizontalLayoutWidget.addWidget(shortCloseRadio)
         shortOpenRadio.clicked.connect(self.changeShortDirectionToOFFSET_OPEN)
         shortCloseRadio.clicked.connect(self.changeShortDirectionToOFFSET_CLOSE)
-=======
-        editPerStep.setValue(self.stepPerVolumn)
-
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
         vhboxConfig.addWidget(labelTotal)
         vhboxConfig.addWidget(editTotal)
@@ -1398,15 +974,9 @@ class BookVolatility(QtWidgets.QWidget):
         vhboxConfig.addWidget(editImpvChange)
         vhboxConfig.addWidget(labelPerStep)
         vhboxConfig.addWidget(editPerStep)
-<<<<<<< HEAD
         vhboxConfig.addLayout(shortDirectionHorizontalLayoutWidget)
         vhboxConfig.addStretch()
 
-=======
-        vhboxConfig.addStretch()
-
-        riskOfGreeksWidget=RiskOfGreeksWidget(self.omEngine, self.mainEngine, self.eventEngine)
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 
         vbox.addLayout(vhboxButtons)
         vbox.addLayout(vhboxConfig)
@@ -1416,7 +986,6 @@ class BookVolatility(QtWidgets.QWidget):
         tab.setMovable(True)
         self.setLayout(vbox)
 
-<<<<<<< HEAD
     # ----------------------------------------------------------------------
     def switchDirection(self,direct,switch):
         """希腊值控制开关,比如delta设定在某一范围内，如果当前delta低于设定值，那么需要停止一些委托，如果高于设定值，那么需要停止另外一些委托"""
@@ -1467,8 +1036,6 @@ class BookVolatility(QtWidgets.QWidget):
             chain.modifyConfigBatch(variable,double)
 
 
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     def dataRestore(self):
         print "还未实现"
         pass
@@ -1517,10 +1084,6 @@ class BookVolatility(QtWidgets.QWidget):
         except Exception:
             print Exception.message
 
-<<<<<<< HEAD
-=======
-
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
 class RiskOfGreeksWidget(QtWidgets.QTableWidget):
     """期权链监控"""
     headers = [
@@ -1530,11 +1093,6 @@ class RiskOfGreeksWidget(QtWidgets.QTableWidget):
         u'下限偏移',
         u'目标值',
         u'上限偏移',
-<<<<<<< HEAD
-=======
-        u'目标值',
-        u'开关',
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     ]
 
     def __init__(self, omEngine, mainEngine, eventEngine,parent=None):
@@ -1550,7 +1108,6 @@ class RiskOfGreeksWidget(QtWidgets.QTableWidget):
         self.cellPosDelta = {}
         self.cellPosGamma =  {}
         self.cellPosVega=  {}
-<<<<<<< HEAD
         self.parentWidget=parent
 
         self.cellTargetValue={}
@@ -1623,56 +1180,106 @@ class RiskOfGreeksWidget(QtWidgets.QTableWidget):
 
         # 单向delta减报单
         if self.greeksSwitch['delta'] == 'on' and self.upGreeksSwitch['delta'] == 'off' and self.downGreeksSwitch['delta'] == 'on':
-            # 获得当前时间各个合约的委托量和委托价格，用来判断是否还需要继续发送委托和撤单！！
-            longVolumeDic, shortVolumeDic, longPriceDic, shortPriceDic = self.calcutateOrderBySymbol()
-            if tick.symbol in longVolumeDic.keys() or tick.symbol in shortVolumeDic.keys():
-                print '目前现货有未成交的委托'
-                return
-
-            req = VtOrderReq()
-            contract = self.mainEngine.getContract(tick.vtSymbol)
-            req.symbol = tick.symbol
-            req.exchange = contract.exchange
-            req.vtSymbol = tick.vtSymbol
-            req.price = tick.bidPrice1
-            if req.symbol=='510050':
-                req.volume = 10000
-            else:
-                req.volume = 1
-            req.direction = DIRECTION_SHORT
-            req.priceType = PRICETYPE_LIMITPRICE
-            req.offset = OFFSET_OPEN
-            self.mainEngine.sendOrder(req, contract.gatewayName)
+            self.sendOrderShortUnderlying(tick)
 
         # 单向delta增报单
         elif self.greeksSwitch['delta'] == 'on' and self.upGreeksSwitch['delta'] == 'on' and self.downGreeksSwitch['delta'] == 'off':
-            # 获得当前时间各个合约的委托量和委托价格，用来判断是否还需要继续发送委托和撤单！！
-            longVolumeDic, shortVolumeDic, longPriceDic, shortPriceDic = self.calcutateOrderBySymbol()
-            if tick.symbol in longVolumeDic.keys() or tick.symbol in shortVolumeDic.keys():
-                print '目前现货有未成交的委托'
-                return
-            req = VtOrderReq()
-            contract = self.mainEngine.getContract(tick.vtSymbol)
-            req.symbol = tick.symbol
-            req.exchange = contract.exchange
-            req.vtSymbol = tick.vtSymbol
-            req.price = tick.askPrice1
-            if req.symbol=='510050':
-                req.volume = 10000
+            self.sendOrderLongUnderlying(tick)
+
+    def cancelOrder(self,symbol):
+        """标的物撤单"""
+        l = self.mainEngine.getAllWorkingOrders()
+        for order in l:
+            if symbol==order.symbol:
+                req = VtCancelOrderReq()
+                req.symbol = order.symbol
+                req.exchange = order.exchange
+                req.frontID = order.frontID
+                req.sessionID = order.sessionID
+                req.orderID = order.orderID
+                self.mainEngine.cancelOrder(req, order.gatewayName)
+
+    # 买标的物下单
+    def sendOrderLongUnderlying(self,tick):
+        # 获得当前时间各个合约的委托量和委托价格，用来判断是否还需要继续发送委托和撤单！！
+        longVolumeDic, shortVolumeDic, longPriceDic, shortPriceDic,longLocalOrderTimeDic,shortLocalOrderTimeDic = self.getOrderTimeBySymbol()
+        if  tick.symbol in shortVolumeDic.keys():
+            print  '目前现货有未成交的卖委托,先把卖委托全部撤销，再做多'
+            self.cancelOrder(tick.symbol)
+        elif tick.symbol in longVolumeDic.keys():
+            print '目前现货有未成交的买委托'
+            if longPriceDic[tick.symbol]<>tick.bidPrice1:
+                print '买委托价和bidprice1不一样，撤单'
+                self.cancelOrder(tick.symbol)
             else:
-                req.volume = 1
-            req.direction = DIRECTION_LONG
-            req.priceType = PRICETYPE_LIMITPRICE
-            req.offset = OFFSET_OPEN
-            self.mainEngine.sendOrder(req, contract.gatewayName)
+                if time.time() - longLocalOrderTimeDic[tick.symbol] > 3:
+                    print '买委托价和bidprice1一样,判断发送委托的时间到现在，如果超过三秒，并且没有成交，撤单'
+                    self.cancelOrder(tick.symbol)
+                else:
+                    print '买委托价和bidprice1一样,判断发送委托的时间到现在，没有超过三秒，不处理'
+                    return
 
+        req = VtOrderReq()
+        contract = self.mainEngine.getContract(tick.vtSymbol)
+        req.symbol = tick.symbol
+        req.exchange = contract.exchange
+        req.vtSymbol = tick.vtSymbol
+        if float(tick.askVolume1/tick.bidVolume1)>2:
+            req.price = tick.bidPrice1
+        else:
+            req.price = tick.askPrice1
+        if req.symbol == '510050':
+            req.volume = 10000
+        else:
+            req.volume = 1
+        req.direction = DIRECTION_LONG
+        req.priceType = PRICETYPE_LIMITPRICE
+        req.offset = OFFSET_OPEN
+        self.mainEngine.sendOrder(req, contract.gatewayName)
 
+    # 卖标的物下单
+    def sendOrderShortUnderlying(self,tick):
+        # 获得当前时间各个合约的委托量和委托价格，用来判断是否还需要继续发送委托和撤单！！
+        print "卖标的物下单"
+        longVolumeDic, shortVolumeDic, longPriceDic, shortPriceDic,longLocalOrderTimeDic,shortLocalOrderTimeDic = self.getOrderTimeBySymbol()
+        if tick.symbol in longVolumeDic.keys():
+            print '目前现货有未成交的买委托,先把买委托全部撤销，再做空'
+        elif tick.symbol in shortVolumeDic.keys():
+            print '目前现货有未成交的卖委托'
+            if shortPriceDic[tick.symbol] <> tick.askPrice1:
+                print '卖委托价和askprice1不一样，撤单'
+                self.cancelOrder(tick.symbol)
+            else:
+                if time.time()-shortLocalOrderTimeDic[tick.symbol]>3:
+                    print '卖委托价和askprice1一样,判断发送委托的时间到现在，如果超过三秒，并且没有成交，撤单'
+                    self.cancelOrder(tick.symbol)
+                else:
+                    print '卖委托价和askprice1一样,判断发送委托的时间到现在，没有超过三秒，不处理'
+                    return
 
+        req = VtOrderReq()
+        contract = self.mainEngine.getContract(tick.vtSymbol)
+        req.symbol = tick.symbol
+        req.exchange = contract.exchange
+        req.vtSymbol = tick.vtSymbol
+        if float(tick.bidVolume1/tick.askVolume1)>2:
+            req.price = tick.askPrice1
+        else:
+            req.price = tick.bidPrice1
+
+        if req.symbol == '510050':
+            req.volume = 10000
+        else:
+            req.volume = 1
+        req.direction = DIRECTION_SHORT
+        req.priceType = PRICETYPE_LIMITPRICE
+        req.offset = OFFSET_OPEN
+        self.mainEngine.sendOrder(req, contract.gatewayName)
 
     # ----------------------------------------------------------------------根据symbol来查询合约委托量
-    def calcutateOrderBySymbol(self):
-        """根据symbol来查询合约委托量"""
-        return self.mainEngine.calcutateOrderBySymbol()
+    def getOrderTimeBySymbol(self):
+        """根据symbol来查询合约委托量和委托时间"""
+        return self.mainEngine.getOrderTimeBySymbol()
 
     def switchDownAndUp(self,item):
         if item in self.cellGreeksSwitch.values():
@@ -1790,26 +1397,6 @@ class RiskOfGreeksWidget(QtWidgets.QTableWidget):
 
     def initUi(self):
         """初始化界面"""
-=======
-        self.cellDeltaConfig =  {}
-        self.cellGammaConfig =  {}
-        self.cellVegaConfig =  {}
-
-        self.initUi()
-
-        self.eventEngine.register(EVENT_TIMER, self.timingChange)
-
-    def timingChange(self,event):
-        self.totalCellGamma.setText(str(self.portfolio.posGamma))
-        self.totalCellDelta.setText(str(self.portfolio.posDelta))
-        self.totalCellVega.setText(str(self.portfolio.posDelta))
-
-    def initUi(self):
-        """初始化界面"""
-
-
-        # 初始化表格
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         self.setFixedHeight(180)
         self.setColumnCount(len(self.headers))
         self.setHorizontalHeaderLabels(self.headers)
@@ -1824,18 +1411,13 @@ class RiskOfGreeksWidget(QtWidgets.QTableWidget):
         self.setItem(2, 0, OmCell(u"vega", None, COLOR_POS))
 
         self.totalCellGamma = OmCell(str(self.portfolio.posGamma), None, COLOR_POS)
-<<<<<<< HEAD
         self.totalCellDelta= OmCell(str(self.posDelta), None, COLOR_POS)
-=======
-        self.totalCellDelta= OmCell(str(self.portfolio.posDelta), None, COLOR_POS)
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         self.totalCellVega = OmCell(str(self.portfolio.posVega), None, COLOR_POS)
 
         self.setItem(0, 1, self.totalCellDelta)
         self.setItem(1, 1, self.totalCellGamma )
         self.setItem(2, 1, self.totalCellVega)
 
-<<<<<<< HEAD
         self.cellGreeksSwitch["delta"]=OmCell(self.greeksSwitch['delta'], None, COLOR_POS, 'delta')
         self.cellGreeksSwitch["gamma"] = OmCell(self.greeksSwitch['gamma'], None, COLOR_POS, 'gamma')
         self.cellGreeksSwitch["vega"] = OmCell(self.greeksSwitch['vega'], None, COLOR_POS, 'vega')
@@ -1913,28 +1495,3 @@ class RiskOfGreeksWidget(QtWidgets.QTableWidget):
             self.downGreeksSwitch[editText.key] = 'on'
 
 
-=======
-        self.setItem(0, 2, OmCell('off', None, COLOR_POS))
-        self.setItem(1, 2, OmCell('off', None, COLOR_POS))
-        self.setItem(2, 2,OmCell('off', None, COLOR_POS))
-
-        self.setCellWidget(0, 3,OmCellEditText(0,'volumn'))
-        self.setCellWidget(1, 3, OmCellEditText(0,'volumn'))
-        self.setCellWidget(2, 3, OmCellEditText(0,'volumn'))
-
-        self.setCellWidget(0, 4, OmCellEditText(0,'volumn'))
-        self.setCellWidget(1, 4,OmCellEditText(0,'volumn'))
-        self.setCellWidget(2, 4,OmCellEditText(0,'volumn'))
-
-        self.setCellWidget(0, 5,OmCellEditText(0,'volumn'))
-        self.setCellWidget(1, 5, OmCellEditText(0,'volumn'))
-        self.setCellWidget(2, 5, OmCellEditText(0,'volumn'))
-
-        self.setCellWidget(0, 6, OmCellEditText(0,'volumn'))
-        self.setCellWidget(1, 6, OmCellEditText(0,'volumn'))
-        self.setCellWidget(2, 6, OmCellEditText(0,'volumn'))
-
-        self.setItem(0, 7, OmCell('off', None, COLOR_POS))
-        self.setItem(1, 7, OmCell('off', None, COLOR_POS))
-        self.setItem(2, 7, OmCell('off', None, COLOR_POS))
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a

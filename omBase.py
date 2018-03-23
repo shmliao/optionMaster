@@ -64,6 +64,8 @@ class OmInstrument(VtTickData):
         if detail:
             self.longPos = detail.longPos
             self.shortPos = detail.shortPos
+            self.longTrade = detail.longTradedVolumn
+            self.shortTrade = detail.shortTradedVolumn
             self.netPos = self.longPos - self.shortPos
     #----------------------------------------------------------------------
     def newTick(self, tick):
@@ -160,11 +162,7 @@ class OmUnderlying(OmInstrument):
         self.putVolume = EMPTY_FLOAT
         self.callPostion = EMPTY_FLOAT
         self.putPostion = EMPTY_FLOAT
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     #----------------------------------------------------------------------
     def addChain(self, chain):
         """添加以该合约为标的的期权链"""
@@ -297,13 +295,15 @@ class OmOption(OmInstrument):
         underlyingPrice = self.underlying.midPrice
         if not underlyingPrice:
             return
-
+        self.callorPutImpv=callorPutImpv
         self.delta, self.gamma, self.theta ,self.dgammaDS,self.dvegaDS,self.vomma,self.vonna= self.calculateGreeks(underlyingPrice,
                                                                                   self.k,
                                                                                   self.r,
                                                                                   self.t,
                                                                                   callorPutImpv,
                                                                                   self.cp)
+
+        self.theoPrice=self.calculatePrice(underlyingPrice,self.k,self.r,self.t,self.midImpv,self.cp)
         # delta f * 0.01
         # vega * 0.01
         self.theoDelta = self.delta * self.size*underlyingPrice*0.01
@@ -316,13 +316,6 @@ class OmOption(OmInstrument):
         self.theoVomma = self.vomma * self.size *0.01*pow(underlyingPrice, 2) * 0.0001
         self.theoVonna = self.vonna * self.size *0.01*0.01
 
-<<<<<<< HEAD
-=======
-        self.theoDgammaDS = self.dgammaDS * self.size
-        self.theoDvegaDS= self.dvegaDS * self.size*underlyingPrice/10000
-        self.theoVomma = self.vomma * self.size
-        self.theoVonna = self.vonna * self.size
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         self.calculatePosGreeks()
 
     def calculateTheoGreeks(self):
@@ -474,11 +467,7 @@ class OmChain(object):
         self.putVolume = EMPTY_FLOAT
         self.callPostion = EMPTY_FLOAT
         self.putPostion = EMPTY_FLOAT
-<<<<<<< HEAD
 
-=======
-    
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     #----------------------------------------------------------------------
     def calculatePosGreeks(self):
         """计算持仓希腊值"""
@@ -509,7 +498,6 @@ class OmChain(object):
         self.putPostion = 0
         # 遍历汇总
         for option in self.callDict.values():
-<<<<<<< HEAD
             self.longPos += option.longPos
             self.shortPos += option.shortPos
 
@@ -531,8 +519,6 @@ class OmChain(object):
             self.callPostion += option.openInterest
 
         for option in self.putDict.values():
-=======
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
             self.longPos += option.longPos
             self.shortPos += option.shortPos
 
@@ -550,37 +536,11 @@ class OmChain(object):
             self.posVomma += option.posVomma
             self.posVonna += option.posVonna
 
-<<<<<<< HEAD
             self.putVolume += option.volume
             self.putPostion += option.openInterest
 
         self.netPos = self.longPos - self.shortPos
 
-=======
-            self.callVolume += option.volume
-            self.callPostion += option.openInterest
-
-        for option in self.putDict.values():
-            self.longPos += option.longPos
-            self.shortPos += option.shortPos
-
-            self.posValue += option.posValue
-            self.posDelta += option.posDelta
-            self.posGamma += option.posGamma
-            self.posTheta += option.posTheta
-            self.posVega += option.posVega
-
-            self.posDgammaDS += option.posDgammaDS
-            self.posDvegaDS += option.posDvegaDS
-            self.posVomma += option.posVomma
-            self.posVonna += option.posVonna
-
-            self.putVolume += option.volume
-            self.putPostion += option.openInterest
-
-        self.netPos = self.longPos - self.shortPos    
-    
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     #----------------------------------------------------------------------
     def newTick(self, tick):
         """期权行情更新"""
@@ -963,11 +923,7 @@ class OmPortfolio(object):
         self.putVolume = 0
         self.callPostion = 0
         self.putPostion = 0
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
         for underlying in self.underlyingDict.values():
             underlying.calculatePosGreeks()
             self.posDelta += underlying.posDelta
@@ -994,15 +950,9 @@ class OmPortfolio(object):
             self.putVolume += chain.putVolume
             self.callPostion += chain.callPostion
             self.putPostion += chain.putPostion
-<<<<<<< HEAD
 
         self.netPos = self.longPos - self.shortPos
 
-=======
-        
-        self.netPos = self.longPos - self.shortPos        
-    
->>>>>>> ca56d046fc017e5a917888ef695a7af02cf4116a
     #----------------------------------------------------------------------
     def newTick(self, tick):
         """行情推送"""
